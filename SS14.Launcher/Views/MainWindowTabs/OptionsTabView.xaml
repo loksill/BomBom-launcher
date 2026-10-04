@@ -15,6 +15,7 @@
 
   <UserControl.Resources>
     <mainWindowTabs:ThemeDescriptionConverter x:Key="ThemeDescriptionConverter" />
+    <mainWindowTabs:HideLevelDescriptionConverter x:Key="HideLevelDescriptionConverter" />
   </UserControl.Resources>
 
   <UserControl.Styles>
@@ -237,6 +238,125 @@
                 <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Name}" /></DataTemplate></ComboBox.ItemTemplate>
               </ComboBox>
             </DockPanel>
+          </StackPanel>
+        </StackPanel>
+      </ScrollViewer>
+    </TabItem>
+    <TabItem Header="{loc:Loc tab-options-plugins-tab}">
+      <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Margin="12" Spacing="14">
+          <StackPanel Spacing="6">
+            <TextBlock Text="{loc:Loc tab-options-plugins-hide-level}" Classes="NanoHeadingMedium" />
+            <TextBlock Text="{loc:Loc tab-options-plugins-hide-level-desc}" Opacity="0.6" TextWrapping="Wrap" />
+            <ComboBox Classes="SettingsCombo" Width="300" Margin="4,0,0,0" ItemsSource="{Binding HideLevels}" SelectedItem="{Binding HideLevel}">
+              <ComboBox.ItemTemplate>
+                <DataTemplate>
+                  <TextBlock Text="{Binding}" />
+                </DataTemplate>
+              </ComboBox.ItemTemplate>
+            </ComboBox>
+            <TextBlock Margin="8,4,0,0" Opacity="0.75" TextWrapping="Wrap"
+                       Text="{Binding HideLevel, Converter={StaticResource HideLevelDescriptionConverter}}" />
+          </StackPanel>
+
+          <Separator Height="1" Opacity="0.1" Background="White" />
+
+          <StackPanel Spacing="6">
+            <TextBlock Text="{loc:Loc tab-options-plugins-game}" Classes="NanoHeadingMedium" />
+            <CheckBox Margin="4" IsChecked="{Binding DisableRPC}" Content="{loc:Loc tab-options-plugins-disable-rpc}" />
+            <TextBlock Margin="26,0,0,0" Opacity="0.6" TextWrapping="Wrap" Text="{loc:Loc tab-options-plugins-disable-rpc-desc}" />
+
+            <CheckBox Margin="4" IsChecked="{Binding FakeRPC}" Content="{loc:Loc tab-options-plugins-fake-rpc}" />
+            <TextBlock Margin="26,0,0,0" Opacity="0.6" TextWrapping="Wrap" Text="{loc:Loc tab-options-plugins-fake-rpc-desc}" />
+            <StackPanel IsVisible="{Binding FakeRPC}" Spacing="4">
+              <TextBlock Margin="8,2" Opacity="0.75" TextWrapping="Wrap" Text="{loc:Loc tab-options-plugins-fake-rpc-username-desc}" />
+              <TextBox Width="600" MaxWidth="1000" HorizontalAlignment="Left" Margin="4,0,0,0"
+                       Text="{Binding RPCUsername, Mode=TwoWay}" />
+              <Button Classes="SettingsButton Compact" HorizontalAlignment="Left" Margin="4,4,0,0"
+                      Content="{loc:Loc tab-options-plugins-fake-rpc-set}" Command="{Binding SetRPCUsernameCommand}" />
+            </StackPanel>
+
+            <CheckBox Margin="4" IsChecked="{Binding DisableRedial}" Content="{loc:Loc tab-options-plugins-disable-redial}" />
+            <TextBlock Margin="26,0,0,0" Opacity="0.6" TextWrapping="Wrap" Text="{loc:Loc tab-options-plugins-disable-redial-desc}" />
+
+            <CheckBox Margin="4" IsChecked="{Binding Blackhole}" Content="{loc:Loc tab-options-plugins-blackhole}" />
+            <TextBlock Margin="26,0,0,0" Opacity="0.6" TextWrapping="Wrap" Text="{loc:Loc tab-options-plugins-blackhole-desc}" />
+
+            <CheckBox Margin="4" IsChecked="{Binding Patchless}" Content="{loc:Loc tab-options-plugins-patchless}" />
+            <TextBlock Margin="26,0,0,0" Opacity="0.6" TextWrapping="Wrap" Text="{loc:Loc tab-options-plugins-patchless-desc}" />
+          </StackPanel>
+
+          <Separator Height="1" Opacity="0.1" Background="White" />
+
+          <StackPanel Spacing="6">
+            <TextBlock Text="{loc:Loc tab-options-plugins-hwid}" Classes="NanoHeadingMedium" />
+            <CheckBox Margin="4" IsChecked="{Binding HWID2OptOut}" Content="{loc:Loc tab-options-plugins-hwid2-optout}" />
+            <StackPanel Margin="26,0,0,0" Spacing="2">
+              <TextBlock Opacity="0.6" TextWrapping="Wrap" Text="{loc:Loc tab-options-plugins-hwid2-optout-desc}" />
+              <TextBlock FontWeight="Bold" TextWrapping="Wrap" Text="{loc:Loc tab-options-plugins-hwid2-optout-warn}" />
+            </StackPanel>
+
+            <CheckBox Margin="4" IsChecked="{Binding ForcingHWID}" Content="{loc:Loc tab-options-plugins-force-hwid}" />
+            <TextBlock Margin="26,0,0,0" Opacity="0.6" TextWrapping="Wrap" Text="{loc:Loc tab-options-plugins-force-hwid-desc}" />
+
+            <StackPanel IsVisible="{Binding ForcingHWID}" Spacing="4">
+              <CheckBox Margin="4,0" IsChecked="{Binding LIHWIDBind}" Content="{loc:Loc tab-options-plugins-li-hwid-bind}" />
+              <TextBlock Margin="26,0,0,0" Opacity="0.6" TextWrapping="Wrap" Text="{loc:Loc tab-options-plugins-li-hwid-bind-desc}" />
+
+              <TextBlock Margin="8,8,0,0" Opacity="0.75" TextWrapping="Wrap" Text="{loc:Loc tab-options-plugins-hwid-change-desc}" />
+              <TextBox Width="600" MaxWidth="1000" HorizontalAlignment="Left" Margin="4,0,0,0"
+                       BorderBrush="{Binding HWIDTextBoxBorderBrush}"
+                       Text="{Binding HWIdString, Mode=TwoWay}" />
+              <StackPanel Orientation="Horizontal" Spacing="8" Margin="4,4,0,0">
+                <Button Classes="SettingsButton Compact" Content="{loc:Loc tab-options-plugins-set-hwid}" Command="{Binding SetHWIdCommand}" />
+                <Button Classes="SettingsButton Compact" Content="{loc:Loc tab-options-plugins-gen-hwid}" Command="{Binding GenHWIdCommand}" />
+              </StackPanel>
+
+              <CheckBox Margin="4,8,0,0" IsChecked="{Binding RandHWID}" Content="{loc:Loc tab-options-plugins-rand-hwid}" />
+              <StackPanel Margin="26,0,0,0" Spacing="2">
+                <TextBlock Opacity="0.6" TextWrapping="Wrap" Text="{loc:Loc tab-options-plugins-rand-hwid-desc}" />
+                <TextBlock FontWeight="Bold" TextWrapping="Wrap" Text="{loc:Loc tab-options-plugins-rand-hwid-warn}" />
+              </StackPanel>
+            </StackPanel>
+          </StackPanel>
+
+          <Separator Height="1" Opacity="0.1" Background="White" />
+
+          <StackPanel Spacing="6">
+            <TextBlock Text="{loc:Loc tab-options-plugins-patching}" Classes="NanoHeadingMedium" />
+            <CheckBox Margin="4" IsChecked="{Binding ThrowPatchFail}" Content="{loc:Loc tab-options-plugins-throw-patch-fail}" />
+            <TextBlock Margin="26,0,0,0" Opacity="0.6" TextWrapping="Wrap" Text="{loc:Loc tab-options-plugins-throw-patch-fail-desc}" />
+          </StackPanel>
+
+          <Separator Height="1" Opacity="0.1" Background="White" />
+
+          <StackPanel Spacing="6">
+            <TextBlock Text="{loc:Loc tab-options-plugins-backports}" Classes="NanoHeadingMedium" />
+            <CheckBox Margin="4" IsChecked="{Binding Backports}" Content="{loc:Loc tab-options-plugins-enable-backports}" />
+            <TextBlock Margin="26,0,0,0" Opacity="0.6" TextWrapping="Wrap" Text="{loc:Loc tab-options-plugins-enable-backports-desc}" />
+
+            <CheckBox Margin="4" IsChecked="{Binding DisableAnyEngineBackports}" Content="{loc:Loc tab-options-plugins-disable-global-backports}" />
+            <TextBlock Margin="26,0,0,0" Opacity="0.6" TextWrapping="Wrap" Text="{loc:Loc tab-options-plugins-disable-global-backports-desc}" />
+          </StackPanel>
+
+          <Separator Height="1" Opacity="0.1" Background="White" />
+
+          <StackPanel Spacing="6">
+            <TextBlock Text="{loc:Loc tab-options-plugins-logging}" Classes="NanoHeadingMedium" />
+            <CheckBox Margin="4" IsChecked="{Binding LogPatches}" Content="{loc:Loc tab-options-plugins-log-patcher}" />
+            <TextBlock Margin="26,0,0,0" Opacity="0.6" TextWrapping="Wrap" Text="{loc:Loc tab-options-plugins-log-patcher-desc}" />
+
+            <CheckBox Margin="4" IsChecked="{Binding LogLauncherPatcher}" Content="{loc:Loc tab-options-plugins-log-launcher-patcher}" />
+            <TextBlock Margin="26,0,0,0" Opacity="0.6" TextWrapping="Wrap" Text="{loc:Loc tab-options-plugins-log-launcher-patcher-desc}" />
+
+            <CheckBox Margin="4" IsChecked="{Binding LogLoaderDebug}" Content="{loc:Loc tab-options-plugins-log-loader-debug}" />
+            <TextBlock Margin="26,0,0,0" Opacity="0.6" TextWrapping="Wrap" Text="{loc:Loc tab-options-plugins-log-loader-debug-desc}" />
+
+            <CheckBox Margin="4" IsChecked="{Binding LogLoaderTrace}" Content="{loc:Loc tab-options-plugins-log-loader-trace}" />
+            <TextBlock Margin="26,0,0,0" Opacity="0.6" TextWrapping="Wrap" Text="{loc:Loc tab-options-plugins-log-loader-trace-desc}" />
+
+            <CheckBox Margin="4" IsChecked="{Binding SeparateLogging}" Content="{loc:Loc tab-options-plugins-separate-logging}" />
+            <TextBlock Margin="26,0,0,0" Opacity="0.6" TextWrapping="Wrap" Text="{loc:Loc tab-options-plugins-separate-logging-desc}" />
           </StackPanel>
         </StackPanel>
       </ScrollViewer>

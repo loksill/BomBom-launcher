@@ -452,3 +452,73 @@ tab-options-helix-discord-rpc-in-game-title = While the game is running
 tab-options-helix-discord-rpc-in-game-original = Original Space Station 14 RPC
 tab-options-helix-discord-rpc-in-game-helix = Helix RPC with server info
 
+
+# BomBom plugin system
+tab-options-plugins-tab = Plugins
+tab-options-plugins-hide-level = Hide Level
+tab-options-plugins-hide-level-desc = Sets degree to which BomBom hides itself.
+tab-options-plugins-hide-disabled = Disabled: BomBom makes no effort to hide itself from the server.
+tab-options-plugins-hide-duplicit = Duplicit: BomBom hides itself as much as possible while still letting the server know a modpack is present.
+tab-options-plugins-hide-normal = Normal: BomBom hides itself from the server while keeping client-side functionality.
+tab-options-plugins-hide-explicit = Explicit: BomBom hides itself and lets the server know a modpack may be present.
+tab-options-plugins-hide-unconditional = Unconditional: BomBom hides itself completely, even from features that need it.
+
+tab-options-plugins-game = Game Behavior
+tab-options-plugins-disable-rpc = Disable RPC
+tab-options-plugins-disable-rpc-desc = Does not let Discord RPC initialize, hiding your username and server from your profile.
+tab-options-plugins-fake-rpc = Fake RPC Username
+tab-options-plugins-fake-rpc-desc = Changes the username on Discord Rich Presence.
+tab-options-plugins-fake-rpc-username-desc = Set your username below. It will be shown in the Discord rich presence activity when hovering on the big icon.
+tab-options-plugins-fake-rpc-set = Set username
+tab-options-plugins-disable-redial = Disable Redial
+tab-options-plugins-disable-redial-desc = Does not let game admins (or the game itself) reconnect you to another station.
+tab-options-plugins-blackhole = Whitelist RemoteExecuteCommand
+tab-options-plugins-blackhole-desc = Allows only whitelisted commands to use RemoteExecuteCommand. May break functions in game.
+tab-options-plugins-patchless = Run patchless
+tab-options-plugins-patchless-desc = Disables any patching except hiding Harmony, essentially acting as a killswitch. Useful when the game breaks due to the launcher itself.
+
+tab-options-plugins-hwid = HWID
+tab-options-plugins-hwid2-optout = Explicitly disallow HWID
+tab-options-plugins-hwid2-optout-desc = HWId2 - Opt out of sending your HWID to the server.
+tab-options-plugins-hwid2-optout-warn = Servers may require a HWID in the future, as HWId2 works (sort of) on Linux.
+tab-options-plugins-force-hwid = Force HWID
+tab-options-plugins-force-hwid-desc = Force change HWID when joining a server.
+tab-options-plugins-li-hwid-bind = Bind HWID to account
+tab-options-plugins-li-hwid-bind-desc = Bind HWID to your account info.
+tab-options-plugins-hwid-change-desc = Change your HWID. Can be set to empty or any hexadecimal string.
+tab-options-plugins-set-hwid = Set HWID
+tab-options-plugins-gen-hwid = Generate random
+tab-options-plugins-rand-hwid = Random HWID
+tab-options-plugins-rand-hwid-desc = Gives a random HWID each time you connect to a server.
+tab-options-plugins-rand-hwid-warn = Detection vector. Do not use on main accounts.
+
+tab-options-plugins-patching = Patching
+tab-options-plugins-throw-patch-fail = Except On Patch Fail
+tab-options-plugins-throw-patch-fail-desc = Exits the client if any patch fails to apply. Useful when you need all patches applied or when debugging a patch.
+
+tab-options-plugins-backports = Backports
+tab-options-plugins-enable-backports = Enable backports
+tab-options-plugins-enable-backports-desc = Apply fixes relevant for the fork and/or engine version if available.
+tab-options-plugins-disable-global-backports = Disable global backports
+tab-options-plugins-disable-global-backports-desc = Disable available backports targeting any engine version.
+
+tab-options-plugins-logging = Logging
+tab-options-plugins-log-patcher = Log Patcher
+tab-options-plugins-log-patcher-desc = Write BomBomLogger output to the log.
+tab-options-plugins-log-launcher-patcher = Enable launcher-patcher logging
+tab-options-plugins-log-launcher-patcher-desc = Write BomBomLogger output to the launcher's stdout.
+tab-options-plugins-log-loader-debug = Enable Loader Debug Logs
+tab-options-plugins-log-loader-debug-desc = Enable Harmony debug mode, outputting IL code to the desktop and providing BomBom debug logs.
+tab-options-plugins-log-loader-trace = Log trace BomBomLogger messages
+tab-options-plugins-log-loader-trace-desc = Write BomBomLogger trace logs to stdout.
+tab-options-plugins-separate-logging = Separate Game/Patcher Logs
+tab-options-plugins-separate-logging-desc = Log patcher output to client.bombom.log instead of client.stdout.log.
+
+tab-plugins-title = Plugins
+tab-plugins-patches-tab = BomBom
+tab-plugins-patches-title = BomBom patches
+tab-plugins-sideloading-tab = Sideloading
+tab-plugins-sideloading-title = Sideloading patches
+tab-plugins-warning = Restart the launcher to apply changes
+tab-plugins-open-directory = Open mods directory
+tab-plugins-recheck = Recheck

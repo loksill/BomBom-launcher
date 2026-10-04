@@ -13,6 +13,12 @@ using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Platform.Storage;
+using BomBom;
+using BomBom.Config;
+using BomBom.Game.Patches;
+using BomBom.IPC;
+using BomBom.Misc;
+using BomBom.Stealthsey;
 using DynamicData;
 using ReactiveUI;
 using Serilog;
@@ -457,6 +463,10 @@ public partial class Connector : ReactiveObject
             BuildCVar("manifest_hash", serverBuildInformation?.ManifestHash);
             BuildCVar("engine_version", serverBuildInformation?.EngineVersion);
 
+            // Steal forkid for backports
+            _forkid = serverBuildInformation?.ForkId ?? resourcePackForkId;
+            _engine = serverBuildInformation?.EngineVersion;
+
             void BuildCVar(string name, string? value)
             {
                 if (value == null)
@@ -626,8 +636,18 @@ public partial class Connector : ReactiveObject
     {
         var pubKey = LauncherPaths.PathPublicKey;
         var engineVersion = launchInfo.ModuleInfo.Single(x => x.Module == "Robust").Version;
+        _engine ??= engineVersion;
         var binPath = _engineManager.GetEnginePath(engineVersion);
         var sig = _engineManager.GetEngineSignature(engineVersion);
+
+        // Abort if engine version hates us and we dont hide ourselves
+        if (Abjure.CheckMalbox(engineVersion, (HideLevel)_cfg.GetCVar(CVars.BomBomHide)))
+        {
+            Log.Error("Engine version over 183 with hidesey disabled, aborting.");
+            return null;
+        }
+
+        await BomBomify();
 
         var startInfo = await GetLoaderStartInfo();
 
@@ -692,6 +712,13 @@ public partial class Connector : ReactiveObject
             EnvVar("SS14_DISABLE_SIGNING", "true");
 
         EnvVar("SS14_LAUNCHER_PATH", Process.GetCurrentProcess().MainModule!.FileName);
+
+        // BomBom-Start
+        EnvVar("BOMBOM_JUMP_LOADER_DEBUG", BomBomConf.JumpLoaderDebug ? "true" : null);
+
+        if (_cfg.GetCVar(CVars.DisallowHwid))
+            EnvVar("ROBUST_AUTH_ALLOW_HWID", "0");
+        // BomBom-End
 
         if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
         {
@@ -763,7 +790,26 @@ public partial class Connector : ReactiveObject
                 4096,
                 FileOptions.Asynchronous);
 
-            PipeOutput(process, fileStdout, fileStderr);
+            // BomBom-Start
+            File.Delete(LauncherPaths.PathClientStdbombomLog);
+            FileStream? fileStdbombom = null;
+
+            BomBomConf.SeparateLogger = _cfg.GetCVar(CVars.SeparateLogging);
+            BomBomConf.BomBomHide = (HideLevel)_cfg.GetCVar(CVars.BomBomHide);
+
+            if (BomBomConf.BomBomHide < HideLevel.Explicit)
+            {
+                fileStdbombom = new FileStream(
+                    LauncherPaths.PathClientStdbombomLog,
+                    FileMode.Create,
+                    FileAccess.Write,
+                    FileShare.Delete | FileShare.ReadWrite,
+                    4096,
+                    FileOptions.Asynchronous);
+            }
+            // BomBom-End
+
+            PipeOutput(process, fileStdout, fileStderr, fileStdbombom);
         }
 
         return process;
@@ -783,14 +829,87 @@ public partial class Connector : ReactiveObject
         }
     }
 
+    // BomBom-Start
+    private async Task BomBomify()
+    {
+        Log.Debug("Preparing patch assemblies.");
+        await FileHandler.PrepareMods();
+
+        ConfigureBomBom();
+        BomBomCleanup();
+    }
+
+    // TODO: Make this a json or something like holy shit
+    private string? _forkid;
+    private string? _engine;
+    private void ConfigureBomBom()
+    {
+        // Prepare environment variables
+        Dictionary<string, string?> envVars = new Dictionary<string, string?>
+        {
+            { "BOMBOM_LOGGING", _cfg.GetCVar(CVars.LogPatcher) ? "true" : null },
+            { "BOMBOM_LOADER_DEBUG", _cfg.GetCVar(CVars.LogLoaderDebug) ? "true" : null },
+            { "BOMBOM_LOADER_TRACE", _cfg.GetCVar(CVars.LogLoaderTrace) ? "true" : null },
+            { "BOMBOM_SEPARATE_LOGGER", _cfg.GetCVar(CVars.SeparateLogging) ? "true" : null },
+            { "BOMBOM_THROW_FAIL", _cfg.GetCVar(CVars.ThrowPatchFail) ? "true" : null },
+            { "BOMBOM_HIDE_LEVEL", $"{_cfg.GetCVar(CVars.BomBomHide)}" },
+            { "BOMBOM_JAMMER", _cfg.GetCVar(CVars.JamDials) ? "true" : null },
+            { "BOMBOM_DISABLE_REC", _cfg.GetCVar(CVars.Blackhole) ? "true" : null },
+            { "BOMBOM_DISABLE_PRESENCE", _cfg.GetCVar(CVars.DisableRPC) ? "true" : null },
+            { "BOMBOM_FAKE_PRESENCE", _cfg.GetCVar(CVars.FakeRPC) ? "true" : null },
+            { "BOMBOM_PRESENCE_USERNAME", _cfg.GetCVar(CVars.RPCUsername) },
+            { "BOMBOM_FORCINGHWID", _cfg.GetCVar(CVars.ForcingHWId) ? "true" : null },
+            { "BOMBOM_FORCEDHWID", _cfg.GetCVar(CVars.ForcingHWId) ? BomBomGetHWID() : null },
+            { "BOMBOM_FORKID", _forkid },
+            { "BOMBOM_ENGINE", _engine },
+            { "BOMBOM_BACKPORTS", _cfg.GetCVar(CVars.Backports) ? "true" : null },
+            { "BOMBOM_NO_ANY_BACKPORTS", _cfg.GetCVar(CVars.DisableAnyEngineBackports) ? "true" : null },
+            { "BOMBOM_PATCHLESS", _cfg.GetCVar(CVars.Patchless) ? "true" : null }
+        };
+
+        // Serialize environment variables
+        string serializedEnvVars = string.Join(";", envVars.Select(kv => $"{kv.Key}={kv.Value}"));
+
+        SendConfig(serializedEnvVars);
+    }
+
+    private async void SendConfig(string config)
+    {
+        Server bomBomConfPipeServer = new Server();
+        await bomBomConfPipeServer.ReadySend("BomBomConf", config);
+    }
+
+    private string BomBomGetHWID()
+    {
+        string forcedHWID = _cfg.GetCVar(CVars.ForcedHWId);
+        if (_cfg.GetCVar(CVars.RandHWID))
+        {
+            forcedHWID = HWID.GenerateRandom();
+        }
+        else if (_cfg.GetCVar(CVars.LIHWIDBind))
+        {
+            forcedHWID = _loginManager.ActiveAccount?.LoginInfo.HWID ?? "";
+        }
+
+        Log.Debug("Exiting with {HWID}", forcedHWID);
+        return forcedHWID;
+    }
+
+    private void BomBomCleanup()
+    {
+        _forkid = null;
+        _engine = null;
+    }
+    // BomBom-End
+
     private static void ConfigureMultiWindow(ContentLaunchInfo launchInfo, ProcessStartInfo startInfo)
     {
         // Implemented in private repo for Steam.
     }
 
-    private static async void PipeOutput(Process process, Stream targetStdout, Stream targetStderr)
+    private static async void PipeOutput(Process process, Stream targetStdout, Stream targetStderr, Stream? targetStdbombom)
     {
-        async Task DoPipe(StreamReader reader, Stream writer)
+        async Task DoPipe(StreamReader reader, Stream writer, Stream? bombomWriter = null)
         {
             var readStream = reader.BaseStream;
             var buf = new byte[4096];
@@ -803,12 +922,21 @@ public partial class Connector : ReactiveObject
                     return;
                 }
 
+                // BomBom-Start
+                if (BomBomConf.SeparateLogger && bombomWriter != null &&
+                    buf.AsSpan(0, read).StartsWith(Encoding.UTF8.GetBytes($"[{BomBomVars.BomBomLoggerPrefix}]")))
+                {
+                    await bombomWriter.WriteAsync(buf.AsMemory(0, read));
+                    await bombomWriter.FlushAsync();
+                }
+                else
+                // BomBom-End
                 await writer.WriteAsync(buf.AsMemory(0, read));
             }
         }
 
         await Task.WhenAll(
-            DoPipe(process.StandardOutput, targetStdout),
+            DoPipe(process.StandardOutput, targetStdout, targetStdbombom),
             DoPipe(process.StandardError, targetStderr));
     }
 

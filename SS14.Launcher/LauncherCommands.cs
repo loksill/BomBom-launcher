@@ -3,6 +3,7 @@ using System.Text;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 using Avalonia.Threading;
+using BomBom.Config;
 using Serilog;
 using Splat;
 using SS14.Launcher.Models.Logins;
@@ -135,6 +136,11 @@ public class LauncherCommands
             // Redialling wait
             await Task.Delay(ConfigConstants.LauncherCommandsRedialWaitTimeout);
         }
+        else if (cmd == DBGJumpCommand)
+        {
+            Log.Information("JUMPER ENABLED - Loader will wait for a debugger to attach!");
+            BomBomConf.JumpLoaderDebug = true;
+        }
         else if (cmd.StartsWith("R"))
         {
             // Reason (encoded in UTF-8 and then into hex for safety)
@@ -166,6 +172,7 @@ public class LauncherCommands
     // Command constructors
 
     public const string PingCommand = ":Ping";
+    public const string DBGJumpCommand = ":Jumper";
     public const string RedialWaitCommand = ":RedialWait";
     public const string BlankReasonCommand = "r";
     public static string ConstructConnectCommand(Uri uri) => "c" + uri.ToString();

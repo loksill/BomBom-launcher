@@ -162,6 +162,118 @@ public static partial class CVars
     /// properly get their existing installations cleared.
     /// </remarks>
     public static readonly CVarDef<int> CurrentArchitecture = CVarDef.Create("CurrentArchitecture", (int) Architecture.X64);
+
+    // BomBom plugin system start here
+
+    // Stealthsey
+
+    /// <summary>
+    /// Define strict level
+    /// </summary>
+    public static readonly CVarDef<int> BomBomHide = CVarDef.Create("HideLevel", 2);
+
+    // Logging
+
+    /// <summary>
+    /// Log messages coming from patches
+    /// </summary>
+    public static readonly CVarDef<bool> LogPatcher = CVarDef.Create("LogPatcher", true);
+
+    /// <summary>
+    /// Log debug messages coming from loader
+    /// </summary>
+    public static readonly CVarDef<bool> LogLoaderDebug = CVarDef.Create("LogLoaderDebug", false);
+
+    /// <summary>
+    /// Log patcher output to a separate file
+    /// </summary>
+    public static readonly CVarDef<bool> SeparateLogging = CVarDef.Create("SeparateLogging", false);
+
+    /// <summary>
+    /// Log patcher output in launcher
+    /// </summary>
+    public static readonly CVarDef<bool> LogLauncherPatcher = CVarDef.Create("LogLauncherPatcher", false);
+
+    /// <summary>
+    /// Log TRC messages
+    /// </summary>
+    public static readonly CVarDef<bool> LogLoaderTrace = CVarDef.Create("LogLoaderTrace", false);
+
+    // Behavior
+
+    /// <summary>
+    /// Throw an exception if a patch fails to apply.
+    /// </summary>
+    public static readonly CVarDef<bool> ThrowPatchFail = CVarDef.Create("ThrowPatchFail", false);
+
+    /// <summary>
+    /// Do we disable the game's Discord RPC?
+    /// </summary>
+    public static readonly CVarDef<bool> DisableRPC = CVarDef.Create("DisableRPC", false);
+
+    /// <summary>
+    /// Do we fake the username on the game's Discord RPC?
+    /// </summary>
+    public static readonly CVarDef<bool> FakeRPC = CVarDef.Create("FakeRPC", false);
+
+    /// <summary>
+    /// Username to fake the game's Discord RPC with
+    /// </summary>
+    public static readonly CVarDef<string> RPCUsername = CVarDef.Create("RPCUsername", "");
+
+    /// <summary>
+    /// Do we disable redialing?
+    /// </summary>
+    public static readonly CVarDef<bool> JamDials = CVarDef.Create("JamDials", false);
+
+    /// <summary>
+    /// Do we disable remote command execution
+    /// </summary>
+    public static readonly CVarDef<bool> Blackhole = CVarDef.Create("Blackhole", false);
+
+    /// <summary>
+    /// Do we force a hwid value
+    /// </summary>
+    public static readonly CVarDef<bool> ForcingHWId = CVarDef.Create("ForcingHWId", false);
+
+    /// <summary>
+    /// Do we use the HWID value bound to LoginInfo
+    /// </summary>
+    public static readonly CVarDef<bool> LIHWIDBind = CVarDef.Create("LIHWIDBind", false);
+
+    /// <summary>
+    /// Apply backports to game when able
+    /// </summary>
+    public static readonly CVarDef<bool> Backports = CVarDef.Create("Backports", false);
+
+    /// <summary>
+    /// Disable all engine backports
+    /// </summary>
+    public static readonly CVarDef<bool> DisableAnyEngineBackports = CVarDef.Create("DisableAnyEngineBackports", false);
+
+    // HWID
+
+    /// <summary>
+    /// Do we use a random HWID each time?
+    /// </summary>
+    public static readonly CVarDef<bool> RandHWID = CVarDef.Create("RandHWID", false);
+
+    /// <summary>
+    /// HWId to use on servers
+    /// </summary>
+    public static readonly CVarDef<string> ForcedHWId = CVarDef.Create("ForcedHWId", "");
+
+    /// <summary>
+    /// HWID2 - Disallow sending hwid to server.
+    /// </summary>
+    public static readonly CVarDef<bool> DisallowHwid = CVarDef.Create("DisallowHwid", false);
+
+    /// <summary>
+    /// Do not patch anything in the game modules
+    /// </summary>
+    public static readonly CVarDef<bool> Patchless = CVarDef.Create("Patchless", false);
+
+    // BomBom plugin system end here
 }
 
 /// <summary>

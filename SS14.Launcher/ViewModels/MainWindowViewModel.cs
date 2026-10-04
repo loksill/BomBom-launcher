@@ -8,7 +8,12 @@ using System.Reactive.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Avalonia.Platform.Storage;
+using BomBom;
+using BomBom.Config;
+using BomBom.Game.Managers;
+using BomBom.Stealthsey;
 using DynamicData;
+using HarmonyLib;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
 using Serilog;
@@ -42,6 +47,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IErrorOverlayOwner
     public HomePageViewModel HomeTab { get; }
     public ServerListTabViewModel ServersTab { get; }
     public NewsTabViewModel NewsTab { get; }
+    public PatchesTabViewModel PatchesTab { get; }
     public OptionsTabViewModel OptionsTab { get; }
 
     public HelixDiscordPresenceController DiscordPresenceController { get; }
@@ -54,15 +60,20 @@ public sealed class MainWindowViewModel : ViewModelBase, IErrorOverlayOwner
         _infoManager = Locator.Current.GetRequiredService<LauncherInfoManager>();
         _loc = LocalizationManager.Instance;
 
+        HarmonyManager.Init(new Harmony(BomBomVars.Identifier));
+        Hidesey.Initialize();
+
         ServersTab = new ServerListTabViewModel(this);
         NewsTab = new NewsTabViewModel();
         HomeTab = new HomePageViewModel(this);
+        PatchesTab = new PatchesTabViewModel();
         OptionsTab = new OptionsTabViewModel();
 
         var tabs = new List<MainWindowTabViewModel>();
         tabs.Add(HomeTab);
         tabs.Add(ServersTab);
         tabs.Add(NewsTab);
+        tabs.Add(PatchesTab);
         tabs.Add(OptionsTab);
 #if DEVELOPMENT
         tabs.Add(new DevelopmentTabViewModel());

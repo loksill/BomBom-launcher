@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.IO.Compression;
@@ -7,6 +8,9 @@ using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Runtime.Loader;
+using System.Threading;
+using BomBom;
+using BomBom.Misc;
 using NSec.Cryptography;
 using Robust.LoaderApi;
 using SS14.Launcher.Models.ResourcePacks;
@@ -22,6 +26,8 @@ internal class Program
 
     private Program(string robustPath, string[] engineArgs)
     {
+        CheckDebugger();
+
         _engineArgs = engineArgs;
         var zipArchive = new ZipArchive(File.OpenRead(robustPath), ZipArchiveMode.Read);
 
@@ -35,6 +41,16 @@ internal class Program
         }
 
         _fileApi = new ZipFileApi(zipArchive, prefix);
+    }
+
+    private void CheckDebugger()
+    {
+        bool jumper = Utility.CheckEnv("BOMBOM_JUMP_LOADER_DEBUG");
+        if (!jumper) return;
+
+        // Wait until debugger gets attached
+        while (!Debugger.IsAttached)
+            Thread.Sleep(100);
     }
 
     private IntPtr LoadContextOnResolvingUnmanaged(Assembly assembly, string unmanaged)
@@ -63,6 +79,13 @@ internal class Program
 #else
         SQLitePCL.Batteries_V2.Init();
 #endif
+
+        ManualResetEvent mre = new ManualResetEvent(false);
+
+        // Start the BomBomPatcher
+        BomBomPatcher.CreateInstance(clientAssembly, mre);
+        mre.WaitOne();
+        new Thread(() => BomBomPatcher.Instance.Boot()).Start();
 
         var launcher = Environment.GetEnvironmentVariable("SS14_LAUNCHER_PATH");
         var redialApi = launcher != null ? new RedialApi(launcher) : null;

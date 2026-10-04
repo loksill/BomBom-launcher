@@ -20,6 +20,9 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\BomBom\BomBom.csproj" />
+  </ItemGroup>
+  <ItemGroup>
     <Compile Update="**\*.xaml.cs">
       <DependentUpon>%(Filename)</DependentUpon>
     </Compile>

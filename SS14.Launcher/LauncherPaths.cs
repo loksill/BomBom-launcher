@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Runtime.InteropServices;
+using BomBom.Config;
 
 namespace SS14.Launcher;
 
@@ -47,6 +48,10 @@ public static class LauncherPaths
     public static readonly string PathClientMacLog = Path.Combine(DirLogs, ClientMacLogName);
     public static readonly string PathClientStdoutLog = Path.Combine(DirLogs, ClientStdoutLogName);
     public static readonly string PathClientStderrLog = Path.Combine(DirLogs, ClientStderrLogName);
+    // BomBom plugin paths
+    public static readonly string DirBomBom = Path.Combine(DirLauncherInstall, BomBomVars.BomBomFolder);
+    public static readonly string DirPatch = Path.Combine(DirLauncherInstall, BomBomVars.BomBomPatchFolder);
+    public static readonly string PathClientStdbombomLog = Path.Combine(DirLogs, BomBomVars.BomBomLoggerFileName);
     public static readonly string PathPublicKey = Path.Combine(DirLauncherInstall, "signing_key");
     public static readonly string PathContentDb = Path.Combine(DirLocalData, "content.db");
     public static readonly string PathOverrideAssetsDb = Path.Combine(DirLocalData, "override_assets.db");
@@ -61,6 +66,8 @@ public static class LauncherPaths
     {
         Ensure(DirLogs);
         Ensure(DirLocalData);
+        Ensure(DirBomBom);
+        Ensure(DirPatch);
         Ensure(DirEngineInstallations);
         Ensure(DirModuleInstallations);
         // Helix-Start
