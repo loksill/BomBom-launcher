@@ -1,21 +1,25 @@
-# SS14.Launcher
+# BomBom Launcher
 
-discord: https://discord.gg/68WfqhBJx3
+[Русская версия](ReadmeRU.md)
 
-# Лицензирование
+discord: 
 
-Исходный код лаунчера Space Station 14, унаследованный от upstream-проекта, сохраняет условия лицензии MIT - см. [LICENSE.txt](LICENSE.txt).
+**BomBom** is a fork of [helix-launcher](https://github.com/banumbas/helix-launcher) with the Marsey functionality attached.
 
-Все изменения, созданные в рамках этого форка, распространяются по лицензии GNU Affero General Public License v3.0 (AGPL-3.0-only) - см. [LICENSE-AGPL-3.0.txt](LICENSE-AGPL-3.0.txt).
+BomBom is currently in active development and testing.
 
-## Licensing
+Our goal is to create a launcher with the maximum amount of features and no limitations.
 
-The Space Station 14 launcher source code inherited from the upstream project remains licensed under the MIT License - see [LICENSE.txt](LICENSE.txt).
+# License
+
+The Space Station 14 launcher source code inherited from the upstream project remains licensed under the MIT License - see [LICENSE.txt](LICENSE.txt) and GNU Affero General Public License v3.0 (AGPL-3.0-only) - see [LICENSE-AGPL-3.0.txt](LICENSE-AGPL-3.0.txt).
 
 All changes created for this fork are licensed under the GNU Affero General Public License v3.0 (AGPL-3.0-only) - see [LICENSE-AGPL-3.0.txt](LICENSE-AGPL-3.0.txt).
 
 # Features
-* Resource Packs
+
+* Resource packs
+* Plugins (Harmony patches and Subversion)
 * Displaying game mode, map and ping in the launcher
 * Redesigned menu with customization options
 * Custom Discord RPC
@@ -26,12 +30,13 @@ All changes created for this fork are licensed under the GNU Affero General Publ
 Resource packs replace client-facing asset files by path at launch time.
 
 Pack directory:
-* `%AppData%/Space Station 14/launcher/ResourcePacks/<PackName>` on Windows by default
+* `%AppData%/Space Station 14/launcher/resource_packs/<PackName>` on Windows by default
+* `~/.local/share/Space Station 14/launcher/resource_packs/<PackName>` on Linux by default (`$XDG_DATA_HOME` is respected if set)
 
 Minimal pack structure:
 
 ```text
-ResourcePacks/
+resource_packs/
   MyPack/
     meta.json
     Resources/
@@ -55,45 +60,38 @@ Notes:
 * If you override files inside an `.rsi` directory, keep the correct `.rsi/meta.json` next to the changed textures.
 * Only `Audio/`, `Fonts/`, `Locale/`, `Shaders/`, and `Textures/` roots are mounted from a pack.
 
-# The LAUNCHER WON'T HAVE harmony SUPPORT, hwid spoofing, and the like, it's designed for FAIR PLAY.
+# Building
 
-# Features
-* Ресурспаки
-* Отображение текущего режима игры, карты и пинга прямо в лаунчере
-* Переработанное меню с возможность кастомизации
-* Кастомный Дискорд RPC
-* Система конфигов
+Requirements:
+* [.NET SDK 10.0](https://dotnet.microsoft.com/download)
+* Git (submodules are used)
+* Python 3 (only for packaging release builds)
 
-# Ресурспаки
+Clone and build:
 
-Ресурспаки заменяют файлы игры по пути к ним во время запуска.
-
-Каталог пакетов:
-* "%AppData%/Space Station 14/launcher/ResourcePacks/<Имя пакета>" в Windows по умолчанию
-
-Минимальная структура ресурспака:
-
-```text
-ResourcePacks/
-  MyPack/
-    meta.json
-    Resources/
-      Textures/
-      Locale/
+```bash
+git clone --recursive https://github.com/loksill/BomBom-launcher.git
+cd BomBom-launcher
+dotnet restore
+dotnet build --configuration Release
 ```
 
-```json
-{
-  "name": "Имя",
-  "description": "Описание",
-  "target": ""
-}
+Run the launcher:
+
+```bash
+dotnet run --project SS14.Launcher/SS14.Launcher.csproj
 ```
 
-Записи:
-* Файлы переопределяются их относительным путем внутри `Resources/`.
-* `target` необязательно. Оставьте это поле пустым, чтобы применить пакет к любому форку.
-* Если вы переопределяете файлы в каталоге `.rsi`, сохраняйте правильный `.rsi/meta.json рядом с измененными текстурами.
-* Только `Audio/`, `Fonts/`, `Locale/`, `Shaders/`, и `Textures/` монтируются в пак.
+Run tests:
 
-# В ЛАУНЧЕРЕ НЕ БУДЕТ ПОДДЕРЖКИ harmony, спуфа хвидов и тому подобного, он предназначен для ЧЕСТНОЙ игры.
+```bash
+dotnet test
+```
+
+Create release packages:
+
+```bash
+./publish.py windows linux osx
+```
+
+Archives are written to `bin/publish/` (`SS14.Launcher_Windows.zip`, etc.). Use `--x64-only` to skip arm64 builds.
