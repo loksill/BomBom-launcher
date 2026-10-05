@@ -91,7 +91,25 @@ dotnet test
 
 ## Пакетная сборка в исполняемые файлы
 
-Скрипт `publish.py` одной командой собирает релизные (Release) исполняемые файлы для указанных платформ, скачивает под них .NET Runtime, раскладывает всё по каталогам и упаковывает результат в zip-архивы.
+Скрипт `publish.py` одной командой собирает релизные (Release) исполняемые файлы для указанных платформ, скачивает под них .NET Runtime, раскладывает всё по каталогам и упаковывает результат в zip-архивы. `build_release.py` — обёртка над ним, которая перед упаковкой сама готовит bootstrap (см. «Сборка Windows-пакета на Linux/macOS»).
+
+### Одной командой
+
+```bash
+./build_release.py                      # Windows + Linux + macOS
+./build_release.py windows              # только Windows
+./build_release.py windows linux --x64-only
+```
+
+Флаги `build_release.py`:
+* `--x64-only` — пропустить сборки для arm64;
+* `--rebuild-bootstrap` — пересобрать bootstrap, даже если копия уже есть;
+* `--no-bootstrap` — не трогать bootstrap (нужен exe из корня репозитория);
+* `--bootstrap-only` — только подготовить bootstrap, без упаковки.
+
+В конце печатаются собранные архивы с размерами.
+
+### Ручной запуск publish.py
 
 Сборка всех платформ разом:
 
@@ -141,14 +159,17 @@ SS14.Launcher_Linux.zip
 
 ### Сборка Windows-пакета на Linux/macOS
 
-Bootstrap — самостоятельный `Space Station 14 Launcher.exe` (NativeAOT, `net10.0-windows`) — скрипт умеет собирать только на Windows. При сборке Windows-пакета на Linux/macOS положите заранее собранный `Space Station 14 Launcher.exe` в корень репозитория: скрипт подхватит его вместо сборки (именно так поступает GitHub Actions в `.github/workflows/publish-release.yml`, собирая его на отдельном Windows-раннере):
+Bootstrap — самостоятельный `Space Station 14 Launcher.exe` (NativeAOT, `net10.0-windows`) — на Windows собирает сам `publish.py`. На Linux/macOS нативную AOT-сборку сделать нельзя (`Cross-OS native compilation is not supported`), поэтому есть два пути:
+
+1. **Автоматически** — `./build_release.py windows` сам кросс-собирает bootstrap (IL, self-contained, single-file) и кладёт его в `Dependencies/bootstrap/`. Работает везде, где есть .NET SDK, но exe выходит крупным (~36 МиБ вместо ~1 МиБ у AOT-варианта) — учитывайте это в размере пакета.
+2. **Вручную** — соберите AOT-bootstrap на Windows и положите `Space Station 14 Launcher.exe` в корень репозитория (приоритетнее кэша; так поступает GitHub Actions в `.github/workflows/publish-release.yml`, собирая его на отдельном Windows-раннере):
 
 ```bash
 # на Windows
 dotnet publish SS14.Launcher.Bootstrap/SS14.Launcher.Bootstrap.csproj -c Release -r win-x64
 ```
 
-Если файла нет, сборка остановится с сообщением `Bootstrap executable not found`.
+Bootstrap ищется в таком порядке: `Space Station 14 Launcher.exe` в корне репозитория → `Dependencies/bootstrap/` → свежая сборка (только на Windows). Если нигде не найден, сборка остановится с сообщением `Bootstrap executable not found`.
 
 Для Windows-бинарников скрипт дополнительно выставляет PE-подсистему в GUI (`exe_set_subsystem.py`), чтобы при запуске не открывалось консольное окно.
 

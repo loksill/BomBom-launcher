@@ -91,7 +91,25 @@ dotnet test
 
 ## Batch build into executables
 
-The `publish.py` script builds Release executables for the requested platforms, downloads the matching .NET Runtime for them, lays everything out in folders and packs the result into zip archives.
+The `publish.py` script builds Release executables for the requested platforms, downloads the matching .NET Runtime for them, lays everything out in folders and packs the result into zip archives. `build_release.py` is a wrapper around it that also prepares the bootstrap before packaging (see "Building the Windows package on Linux/macOS").
+
+### One command
+
+```bash
+./build_release.py                      # Windows + Linux + macOS
+./build_release.py windows              # Windows only
+./build_release.py windows linux --x64-only
+```
+
+`build_release.py` flags:
+* `--x64-only` — skip arm64 builds;
+* `--rebuild-bootstrap` — rebuild the bootstrap even if a copy already exists;
+* `--no-bootstrap` — do not touch the bootstrap (expects the exe in the repository root);
+* `--bootstrap-only` — only prepare the bootstrap, no packaging.
+
+At the end it prints the built archives with their sizes.
+
+### Running publish.py manually
 
 Build all platforms at once:
 
@@ -141,14 +159,17 @@ Running a built package:
 
 ### Building the Windows package on Linux/macOS
 
-The bootstrap (`Space Station 14 Launcher.exe`, NativeAOT, `net10.0-windows`) can only be built by the script on Windows. When building the Windows package on Linux/macOS, place a previously built `Space Station 14 Launcher.exe` in the repository root: the script picks it up instead of building one (this is exactly what GitHub Actions does in `.github/workflows/publish-release.yml`, building it on a separate Windows runner):
+The bootstrap (`Space Station 14 Launcher.exe`, NativeAOT, `net10.0-windows`) is built by `publish.py` itself on Windows. On Linux/macOS a native AOT build is impossible (`Cross-OS native compilation is not supported`), so there are two options:
+
+1. **Automatically** — `./build_release.py windows` cross-builds the bootstrap itself (IL, self-contained, single-file) and puts it in `Dependencies/bootstrap/`. Works anywhere with the .NET SDK, but the exe is much larger (~36 MiB instead of ~1 MiB for the AOT one) — keep that in mind for the package size.
+2. **Manually** — build the AOT bootstrap on Windows and put `Space Station 14 Launcher.exe` in the repository root (it takes priority over the cache; this is what GitHub Actions does in `.github/workflows/publish-release.yml`, building it on a separate Windows runner):
 
 ```bash
 # on Windows
 dotnet publish SS14.Launcher.Bootstrap/SS14.Launcher.Bootstrap.csproj -c Release -r win-x64
 ```
 
-If the file is missing, the build stops with `Bootstrap executable not found`.
+The bootstrap is looked up in this order: `Space Station 14 Launcher.exe` in the repository root → `Dependencies/bootstrap/` → a fresh build (Windows only). If none is found, the build stops with `Bootstrap executable not found`.
 
 For Windows binaries the script also sets the PE subsystem to GUI (`exe_set_subsystem.py`) so that no console window opens on launch.
 

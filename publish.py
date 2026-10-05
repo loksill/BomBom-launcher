@@ -64,6 +64,8 @@ def publish_windows(x64_only: bool):
     # Natively compiled copy we need to get from a separate worker.
     if os.path.isfile("Space Station 14 Launcher.exe"):
         bootstrap_path = "Space Station 14 Launcher.exe"
+    elif os.path.isfile(p("Dependencies", "bootstrap", "Space Station 14 Launcher.exe")):
+        bootstrap_path = p("Dependencies", "bootstrap", "Space Station 14 Launcher.exe")
     if not os.path.isfile(bootstrap_path):
         raise SystemExit(
             "Bootstrap executable not found: 'Space Station 14 Launcher.exe'.\n"
