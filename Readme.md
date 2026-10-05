@@ -23,8 +23,7 @@ All changes created for this fork are licensed under the GNU Affero General Publ
 * Displaying game mode, map and ping in the launcher
 * Redesigned menu with customization options
 * Custom Discord RPC
-* Config system
-* Mods
+* Config system 
 
 # Resource Packs
 
