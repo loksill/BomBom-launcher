@@ -56,9 +56,9 @@ def set_subsystem(exe: str, subsystem: int):
     # This is the hard bit.
     # Or not.
     # Expected these to be in different places.
-    if peHeader[0] == 332:
-        subsystemOptOfs = 68
-    elif peHeader[0] == 0x8664:
+    # 0x14C = i386, 0x8664 = AMD64, 0xAA64 = ARM64.
+    # All three use the same subsystem offset in the optional header.
+    if peHeader[0] in (0x14C, 0x8664, 0xAA64):
         subsystemOptOfs = 68
     else:
         raise Exception("Unable to handle machine: " + str(peHeader[0]))

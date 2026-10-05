@@ -64,6 +64,13 @@ def publish_windows(x64_only: bool):
     # Natively compiled copy we need to get from a separate worker.
     if os.path.isfile("Space Station 14 Launcher.exe"):
         bootstrap_path = "Space Station 14 Launcher.exe"
+    if not os.path.isfile(bootstrap_path):
+        raise SystemExit(
+            "Bootstrap executable not found: 'Space Station 14 Launcher.exe'.\n"
+            "It is only built on Windows. Either run this script on Windows, or build it there with\n"
+            "    dotnet publish SS14.Launcher.Bootstrap/SS14.Launcher.Bootstrap.csproj -c Release -r win-x64\n"
+            "and copy the resulting exe into the repository root before packaging on Linux/macOS."
+        )
     shutil.copyfile(bootstrap_path, "bin/publish/Windows/Space Station 14 Launcher.exe")
     shutil.copyfile("SS14.Launcher.Bootstrap/console.bat", "bin/publish/Windows/console.bat")
 

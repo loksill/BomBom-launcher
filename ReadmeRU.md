@@ -141,7 +141,14 @@ SS14.Launcher_Linux.zip
 
 ### Сборка Windows-пакета на Linux/macOS
 
-Bootstrap — самостоятельный `Space Station 14 Launcher.exe` — скрипт умеет собирать только на Windows. При сборке Windows-пакета на Linux/macOS положите заранее собранный `Space Station 14 Launcher.exe` в корень репозитория: скрипт подхватит его вместо сборки (именно так поступает GitHub Actions в `.github/workflows/publish-release.yml`). Если файла нет, сборка упадёт на этапе копирования.
+Bootstrap — самостоятельный `Space Station 14 Launcher.exe` (NativeAOT, `net10.0-windows`) — скрипт умеет собирать только на Windows. При сборке Windows-пакета на Linux/macOS положите заранее собранный `Space Station 14 Launcher.exe` в корень репозитория: скрипт подхватит его вместо сборки (именно так поступает GitHub Actions в `.github/workflows/publish-release.yml`, собирая его на отдельном Windows-раннере):
+
+```bash
+# на Windows
+dotnet publish SS14.Launcher.Bootstrap/SS14.Launcher.Bootstrap.csproj -c Release -r win-x64
+```
+
+Если файла нет, сборка остановится с сообщением `Bootstrap executable not found`.
 
 Для Windows-бинарников скрипт дополнительно выставляет PE-подсистему в GUI (`exe_set_subsystem.py`), чтобы при запуске не открывалось консольное окно.
 

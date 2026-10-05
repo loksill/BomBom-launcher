@@ -141,7 +141,14 @@ Running a built package:
 
 ### Building the Windows package on Linux/macOS
 
-The bootstrap (`Space Station 14 Launcher.exe`) can only be built by the script on Windows. When building the Windows package on Linux/macOS, place a previously built `Space Station 14 Launcher.exe` in the repository root: the script picks it up instead of building one (this is exactly what GitHub Actions does in `.github/workflows/publish-release.yml`). If the file is missing, the build fails at the copy step.
+The bootstrap (`Space Station 14 Launcher.exe`, NativeAOT, `net10.0-windows`) can only be built by the script on Windows. When building the Windows package on Linux/macOS, place a previously built `Space Station 14 Launcher.exe` in the repository root: the script picks it up instead of building one (this is exactly what GitHub Actions does in `.github/workflows/publish-release.yml`, building it on a separate Windows runner):
+
+```bash
+# on Windows
+dotnet publish SS14.Launcher.Bootstrap/SS14.Launcher.Bootstrap.csproj -c Release -r win-x64
+```
+
+If the file is missing, the build stops with `Bootstrap executable not found`.
 
 For Windows binaries the script also sets the PE subsystem to GUI (`exe_set_subsystem.py`) so that no console window opens on launch.
 
