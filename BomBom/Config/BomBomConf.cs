@@ -72,6 +72,11 @@ public static class BomBomConf
     public static bool Patchless;
 
     /// <summary>
+    /// Automatically delete HWID from registry before connecting
+    /// </summary>
+    public static bool AutoDeleteHWID;
+
+    /// <summary>
     /// Reflect changes made here to the Dictionary in the launcher's Connector.cs
     /// </summary>
     public static readonly Dictionary<string, Action<string>> EnvVarMap = new Dictionary<string, Action<string>>
@@ -82,7 +87,10 @@ public static class BomBomConf
         { "BOMBOM_THROW_FAIL", value => ThrowOnFail = value == "true" },
         { "BOMBOM_SEPARATE_LOGGER", value => SeparateLogger = value == "true" },
         { "BOMBOM_FORCINGHWID", value => ForceHWID = value == "true" },
-        { "BOMBOM_FORCEDHWID", value => HWID.SetHWID(value)},
+        { "BOMBOM_FORCEDHWID_LEGACY", value => HWID.SetLegacy(value) },
+        { "BOMBOM_FORCEDHWID", value => HWID.SetModern(value) },
+        { "BOMBOM_FLYI", value => HWID.SetFlYi(value) },
+        { "BOMBOM_AUTODELETE_HWID", value => AutoDeleteHWID = value == "true" },
         { "BOMBOM_DISABLE_PRESENCE", value => KillRPC = value == "true" },
         { "BOMBOM_FAKE_PRESENCE", value => FakeRPC = value == "true"},
         { "BOMBOM_PRESENCE_USERNAME", value => DiscordRPC.SetUsername(value)},

@@ -42,6 +42,7 @@ def publish_windows(x64_only: bool):
 
     dotnet_publish("SS14.Launcher/SS14.Launcher.csproj", "win-x64", False, "/p:FullRelease=True", "/p:RobustILLink=true")
     dotnet_publish("SS14.Loader/SS14.Loader.csproj", "win-x64", False, "/p:FullRelease=True", "/p:RobustILLink=true")
+    dotnet_publish("SS14.Updater/SS14.Updater.csproj", "win-x64", False, "/p:FullRelease=True", "/p:RobustILLink=true")
     if os.name == 'nt':
         dotnet_publish("SS14.Launcher.Bootstrap/SS14.Launcher.Bootstrap.csproj", "win-x64", True, "/p:FullRelease=True", "/p:RobustILLink=true")
 
@@ -51,6 +52,7 @@ def publish_windows(x64_only: bool):
     if not x64_only:
         dotnet_publish("SS14.Launcher/SS14.Launcher.csproj", "win-arm64", False, "/p:FullRelease=True", "/p:RobustILLink=true")
         dotnet_publish("SS14.Loader/SS14.Loader.csproj", "win-arm64", False, "/p:FullRelease=True", "/p:RobustILLink=true")
+        dotnet_publish("SS14.Updater/SS14.Updater.csproj", "win-arm64", False, "/p:FullRelease=True", "/p:RobustILLink=true")
         safe_set_subsystem(f"SS14.Launcher/bin/Release/{TFM}/win-arm64/publish/SS14.Launcher.exe")
         safe_set_subsystem(f"SS14.Loader/bin/Release/{TFM}/win-arm64/publish/SS14.Loader.exe")
 
@@ -79,11 +81,13 @@ def publish_windows(x64_only: bool):
     shutil.copytree("Dependencies/dotnet/windows", "bin/publish/Windows/dotnet_x64", dirs_exist_ok=True)
     shutil.copytree(f"SS14.Launcher/bin/Release/{TFM}/win-x64/publish", "bin/publish/Windows/bin_x64", dirs_exist_ok=True)
     shutil.copytree(f"SS14.Loader/bin/Release/{TFM}/win-x64/publish", "bin/publish/Windows/bin_x64/loader", dirs_exist_ok=True)
+    shutil.copytree(f"SS14.Updater/bin/Release/{TFM}/win-x64/publish", "bin/publish/Windows/bin_x64", dirs_exist_ok=True)
 
     if not x64_only:
         shutil.copytree("Dependencies/dotnet/windows-arm64", "bin/publish/Windows/dotnet_arm64", dirs_exist_ok=True)
         shutil.copytree(f"SS14.Launcher/bin/Release/{TFM}/win-arm64/publish", "bin/publish/Windows/bin_arm64", dirs_exist_ok=True)
         shutil.copytree(f"SS14.Loader/bin/Release/{TFM}/win-arm64/publish", "bin/publish/Windows/bin_arm64/loader", dirs_exist_ok=True)
+        shutil.copytree(f"SS14.Updater/bin/Release/{TFM}/win-arm64/publish", "bin/publish/Windows/bin_arm64", dirs_exist_ok=True)
 
     os.makedirs("bin/publish/Windows/bin_x64/BomBom/Mods", exist_ok=True)
     if not x64_only:
@@ -102,10 +106,12 @@ def publish_linux(x64_only: bool):
 
     dotnet_publish("SS14.Launcher/SS14.Launcher.csproj", "linux-x64", False, "/p:FullRelease=True", "/p:RobustILLink=true")
     dotnet_publish("SS14.Loader/SS14.Loader.csproj", "linux-x64", False, "/p:FullRelease=True", "/p:RobustILLink=true")
+    dotnet_publish("SS14.Updater/SS14.Updater.csproj", "linux-x64", False, "/p:FullRelease=True", "/p:RobustILLink=true")
 
     if not x64_only:
         dotnet_publish("SS14.Launcher/SS14.Launcher.csproj", "linux-arm64", False, "/p:FullRelease=True", "/p:RobustILLink=true")
         dotnet_publish("SS14.Loader/SS14.Loader.csproj", "linux-arm64", False, "/p:FullRelease=True", "/p:RobustILLink=true")
+        dotnet_publish("SS14.Updater/SS14.Updater.csproj", "linux-arm64", False, "/p:FullRelease=True", "/p:RobustILLink=true")
 
     os.makedirs("bin/publish/Linux/bin_x64/loader", exist_ok=True)
     os.makedirs("bin/publish/Linux/dotnet_x64", exist_ok=True)
@@ -116,11 +122,13 @@ def publish_linux(x64_only: bool):
     shutil.copytree("Dependencies/dotnet/linux", "bin/publish/Linux/dotnet_x64", dirs_exist_ok=True)
     shutil.copytree(f"SS14.Launcher/bin/Release/{TFM}/linux-x64/publish", "bin/publish/Linux/bin_x64", dirs_exist_ok=True)
     shutil.copytree(f"SS14.Loader/bin/Release/{TFM}/linux-x64/publish", "bin/publish/Linux/bin_x64/loader", dirs_exist_ok=True)
+    shutil.copytree(f"SS14.Updater/bin/Release/{TFM}/linux-x64/publish", "bin/publish/Linux/bin_x64", dirs_exist_ok=True)
 
     if not x64_only:
         shutil.copytree("Dependencies/dotnet/linux-arm64", "bin/publish/Linux/dotnet_arm64", dirs_exist_ok=True)
         shutil.copytree(f"SS14.Launcher/bin/Release/{TFM}/linux-arm64/publish", "bin/publish/Linux/bin_arm64", dirs_exist_ok=True)
         shutil.copytree(f"SS14.Loader/bin/Release/{TFM}/linux-arm64/publish", "bin/publish/Linux/bin_arm64/loader", dirs_exist_ok=True)
+        shutil.copytree(f"SS14.Updater/bin/Release/{TFM}/linux-arm64/publish", "bin/publish/Linux/bin_arm64", dirs_exist_ok=True)
 
     shutil.copyfile("PublishFiles/SS14.Launcher", "bin/publish/Linux/SS14.Launcher")
     shutil.copyfile("PublishFiles/SS14.desktop", "bin/publish/Linux/SS14.desktop")

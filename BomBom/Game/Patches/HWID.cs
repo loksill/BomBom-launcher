@@ -8,38 +8,46 @@ using BomBom.Stealthsey;
 
 namespace BomBom.Game.Patches;
 
-/// <summary>
-/// Manages HWId variable given to the game.
-/// </summary>
 public static class HWID
 {
+    private static byte[] _hwId2 = Array.Empty<byte>();
     private static byte[] _hwId = Array.Empty<byte>();
-    private static string _hwidString = "";
+    private static string _flYi = string.Empty; // flYi = GUID
 
     /// <summary>
     /// Patching the HWId function and replacing it with a custom HWId.
     /// </summary>
     public static void Force()
     {
-        // TODO: Further work on HWID2
-        // While currently trust is not used, I suspect having an empty hwid string will harm its value
-        // This is made so you couldn't hwid ban other people this easily
-        // As of 10/4/2024 hwid2 instead of this bullshit you can pass an env variable to tell the client that you're not sending your hwid
-
-        // Check if forcing is enabled
         if (!BomBomConf.ForceHWID)
+        {
+            BomBomLogger.Log(BomBomLogger.LogType.INFO, "HWIDForcer", "Spoofer disabled.");
             return;
+        }
 
-        BomBomLogger.Log(BomBomLogger.LogType.INFO, "HWIDForcer", $"Trying to apply {_hwidString}");
-
-        string cleanedHwid = CleanHwid(_hwidString);
-        ForceHWID(cleanedHwid);
         PatchCalcMethod();
     }
 
-    public static void SetHWID(string hwid)
+    public static void SetModern(string value)
     {
-        _hwidString = hwid;
+        _hwId2 = ConvertToBytes(value);
+    }
+
+    public static void SetLegacy(string value)
+    {
+        _hwId = ConvertToBytes(value);
+    }
+
+    public static void SetFlYi(string guid)
+    {
+        _flYi = guid;
+    }
+
+    public static void SetAll(string modern, string legacy, string adminGuid)
+    {
+        SetModern(modern);
+        SetLegacy(legacy);
+        SetFlYi(adminGuid);
     }
 
     private static string CleanHwid(string hwid)
@@ -47,19 +55,15 @@ public static class HWID
         return new string(hwid.Where(c => "0123456789ABCDEF".Contains(c)).ToArray());
     }
 
-    private static void ForceHWID(string cleanedHwid)
+    private static byte[] ConvertToBytes(string hex)
     {
-        try
-        {
-            _hwId = Enumerable.Range(0, cleanedHwid.Length / 2)
-                              .Select(x => Convert.ToByte(cleanedHwid.Substring(x * 2, 2), 16))
-                              .ToArray();
-        }
-        catch (FormatException ex)
-        {
-            BomBomLogger.Log(BomBomLogger.LogType.INFO, $"Invalid HWID format, must be hexadecimal: {ex.Message}.\nSetting to null.");
-            _hwId = Array.Empty<byte>();
-        }
+        string cleaned = CleanHwid(hex);
+        if (cleaned.Length == 0)
+            return Array.Empty<byte>();
+
+        return Enumerable.Range(0, cleaned.Length / 2)
+                          .Select(x => Convert.ToByte(cleaned.Substring(x * 2, 2), 16))
+                          .ToArray();
     }
 
     public static string GenerateRandom(int length = 64)
@@ -76,39 +80,79 @@ public static class HWID
         return result.ToString();
     }
 
+    private static byte[] GenerateRandomBytes(int length = 32)
+    {
+        Random random = new Random();
+        byte[] bytes = new byte[length];
+        random.NextBytes(bytes);
+        return bytes;
+    }
+
     private static void PatchCalcMethod()
     {
-        Type? hwid1 = Helpers.TypeFromQualifiedName("Robust.Shared.Network.HWId");
-        Type? hwid2 = Helpers.TypeFromQualifiedName("Robust.Client.Hwid.BasicHwid");
+        Type? basicHwid = Helpers.TypeFromQualifiedName("Robust.Client.HWId.BasicHWId");
+        Type? dummyHwid = Helpers.TypeFromQualifiedName("Robust.Shared.Network.DummyHWId");
+        Type? flYi = Helpers.TypeFromQualifiedName("Content.Client.Administration.Systems.AdminInfoSystem");
 
-        if (hwid1 is not null)
+        if (basicHwid is null && dummyHwid is null)
         {
-            Helpers.PatchMethod(
-                hwid1,
-                "Calc",
-                typeof(HWID),
-                "RecalcHwid",
-                HarmonyPatchType.Postfix
-            );
+            BomBomLogger.Log(BomBomLogger.LogType.ERRO, "HWIdForcer", "No HWId types found!");
             return;
         }
+        if (flYi is null) BomBomLogger.Log(BomBomLogger.LogType.WARN, "flYiForcer", "flYi type not found!");
 
-        if (hwid2 is not null)
+        if (basicHwid is not null)
         {
-            Helpers.PatchMethod(
-                hwid2,
-                "GetLegacy",
-                typeof(HWID),
-                nameof(RecalcHwid),
-                HarmonyPatchType.Postfix
-            );
+            if (OperatingSystem.IsWindows())
+            {
+                Helpers.PatchMethod(
+                    basicHwid,
+                    "GetLegacy",
+                    typeof(HWID),
+                    nameof(RecalcHwid),
+                    HarmonyPatchType.Postfix
+                );
+            }
 
             Helpers.PatchMethod(
-                hwid2,
+                basicHwid,
                 "GetModern",
                 typeof(HWID),
                 nameof(RecalcHwid2),
                 HarmonyPatchType.Postfix
+            );
+        }
+
+        if (dummyHwid is not null)
+        {
+            if (OperatingSystem.IsWindows())
+            {
+                Helpers.PatchMethod(
+                    dummyHwid,
+                    "GetLegacy",
+                    typeof(HWID),
+                    nameof(RecalcHwid),
+                    HarmonyPatchType.Postfix
+                );
+            }
+
+            Helpers.PatchMethod(
+                dummyHwid,
+                "GetModern",
+                typeof(HWID),
+                nameof(RecalcHwid2),
+                HarmonyPatchType.Postfix
+            );
+        }
+
+        if (flYi is not null)
+        {
+            Helpers.PatchMethod(
+                flYi,
+                "i",
+                typeof(HWID),
+                nameof(PrefixAdminInfo),
+                HarmonyPatchType.Prefix
             );
         }
     }
@@ -117,18 +161,68 @@ public static class HWID
     {
         return Regex.IsMatch(hwid, "^$|^[A-F0-9]{64}$");
     }
-
     private static void RecalcHwid(ref byte[] __result)
     {
-        string hwidString = BitConverter.ToString(_hwId).Replace("-", "");
-        BomBomLogger.Log(BomBomLogger.LogType.DEBG, "HWIDForcer", $"\"Recalculating\" HWID to {hwidString}");
+        string original = BitConverter.ToString(__result).Replace("-", "");
+
+        if (_hwId.Length == 0)
+        {
+            _hwId = GenerateRandomBytes(32);
+            BomBomLogger.Log(BomBomLogger.LogType.INFO, "HWIdForcer", "[LEGACY] No HWID provided, generated random");
+        }
+
+        string applied = BitConverter.ToString(_hwId).Replace("-", "");
+
+        BomBomLogger.Log(BomBomLogger.LogType.INFO, "HWIdForcer", $"[LEGACY] Original: {original}");
+        BomBomLogger.Log(BomBomLogger.LogType.INFO, "HWIdForcer", $"[LEGACY] Applied: {applied}");
+
         __result = _hwId;
     }
 
     private static void RecalcHwid2(ref byte[] __result)
     {
-        string hwidString = BitConverter.ToString(_hwId).Replace("-", "");
-        BomBomLogger.Log(BomBomLogger.LogType.DEBG, "HWIDForcer", $"\"Recalculating\" HWID to {hwidString}");
-        __result = [0, .._hwId];
+        string original = BitConverter.ToString(__result).Replace("-", "");
+
+        if (_hwId2.Length == 0)
+        {
+            _hwId2 = GenerateRandomBytes(32);
+            BomBomLogger.Log(BomBomLogger.LogType.INFO, "HWIdForcer", "[MODERN] No HWID provided, generated random");
+        }
+
+        string applied = BitConverter.ToString(_hwId2).Replace("-", "");
+
+        BomBomLogger.Log(BomBomLogger.LogType.INFO, "HWIdForcer", $"[MODERN] Original: {original}");
+        BomBomLogger.Log(BomBomLogger.LogType.INFO, "HWIdForcer", $"[MODERN] Applied: {applied}");
+
+        __result = [0, .._hwId2];
+    }
+    public static bool CheckGuid(string guid)
+    {
+        return Guid.TryParse(guid, out _);
+    }
+
+    private static bool PrefixAdminInfo(ref Guid p)
+    {
+        string original = p.ToString();
+
+        if (string.IsNullOrEmpty(_flYi))
+        {
+            BomBomLogger.Log(BomBomLogger.LogType.WARN, "flYiForcer", "[ADMIN GUID] No GUID provided, using original");
+            return true;
+        }
+
+        if (Guid.TryParse(_flYi, out var spoofedGuid))
+        {
+            BomBomLogger.Log(BomBomLogger.LogType.INFO, "flYiForcer", $"[ADMIN GUID] Original: {original}");
+            BomBomLogger.Log(BomBomLogger.LogType.INFO, "flYiForcer", $"[ADMIN GUID] Applied: {_flYi}");
+
+            p = spoofedGuid;
+        }
+        else
+        {
+            BomBomLogger.Log(BomBomLogger.LogType.ERRO, "flYiForcer", $"[ADMIN GUID] Invalid GUID format: {_flYi}");
+        }
+
+        return true;
     }
 }

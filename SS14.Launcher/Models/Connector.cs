@@ -875,7 +875,10 @@ public partial class Connector : ReactiveObject
             { "BOMBOM_FAKE_PRESENCE", _cfg.GetCVar(CVars.FakeRPC) ? "true" : null },
             { "BOMBOM_PRESENCE_USERNAME", _cfg.GetCVar(CVars.RPCUsername) },
             { "BOMBOM_FORCINGHWID", _cfg.GetCVar(CVars.ForcingHWId) ? "true" : null },
-            { "BOMBOM_FORCEDHWID", _cfg.GetCVar(CVars.ForcingHWId) ? BomBomGetHWID() : null },
+            { "BOMBOM_FORCEDHWID", _cfg.GetCVar(CVars.ForcingHWId) ? BomBomGetModernHWId() : null },
+            { "BOMBOM_FORCEDHWID_LEGACY", _cfg.GetCVar(CVars.ForcingHWId) ? BomBomGetLegacyHWId() : null },
+            { "BOMBOM_FLYI", _cfg.GetCVar(CVars.ForcingHWId) ? BomBomGetFlYi() : null },
+            { "BOMBOM_AUTODELETE_HWID", _cfg.GetCVar(CVars.AutoDeleteHWID) ? "true" : null },
             { "BOMBOM_FORKID", _forkid },
             { "BOMBOM_ENGINE", _engine },
             { "BOMBOM_BACKPORTS", _cfg.GetCVar(CVars.Backports) ? "true" : null },
@@ -913,18 +916,36 @@ public partial class Connector : ReactiveObject
         }
     }
 
-    private string BomBomGetHWID()
+    private string BomBomGetFlYi()
     {
-        string forcedHWID = _cfg.GetCVar(CVars.ForcedHWId);
-        if (_cfg.GetCVar(CVars.RandHWID))
+        if (_loginManager.ActiveAccount != null)
         {
-            forcedHWID = HWID.GenerateRandom();
-        }
-        else if (_cfg.GetCVar(CVars.LIHWIDBind))
-        {
-            forcedHWID = _loginManager.ActiveAccount?.LoginInfo.HWID ?? "";
+            return _loginManager.ActiveAccount.LoginInfo.UserId.ToString();
         }
 
+        return string.Empty;
+    }
+
+    private string BomBomGetLegacyHWId()
+    {
+        if (_cfg.GetCVar(CVars.RandHWID))
+            return HWID.GenerateRandom();
+
+        if (_cfg.GetCVar(CVars.LIHWIDBind) && _loginManager.ActiveAccount != null)
+            return _loginManager.ActiveAccount.LoginInfo.LegacyHWId;
+
+        return HWID.GenerateRandom();
+    }
+
+    private string BomBomGetModernHWId()
+    {
+        if (_cfg.GetCVar(CVars.RandHWID))
+            return HWID.GenerateRandom();
+
+        if (_cfg.GetCVar(CVars.LIHWIDBind) && _loginManager.ActiveAccount != null)
+            return _loginManager.ActiveAccount.LoginInfo.ModernHWId;
+
+        string forcedHWID = _cfg.GetCVar(CVars.ForcedHWId);
         Log.Debug("Exiting with {HWID}", forcedHWID);
         return forcedHWID;
     }

@@ -284,6 +284,7 @@ public sealed class DataManager : ReactiveObject
             SetCVar(CVars.Fingerprint, Guid.NewGuid().ToString());
         }
 
+        EnsureHwids();
         CommitConfig();
     }
 
@@ -291,13 +292,19 @@ public sealed class DataManager : ReactiveObject
     {
         // Load logins.
         _logins.AddOrUpdate(
-            sqliteConnection.Query<(Guid id, string name, string token, DateTimeOffset expires)>(
-                    "SELECT UserId, UserName, Token, Expires FROM Login")
+            sqliteConnection.Query<(Guid id, string name, string token, string? modernhwid, string? legacyhwid, DateTimeOffset expires)>(
+                    """
+                    SELECT l.UserId, l.UserName, l.Token, h.ModernHWId, h.LegacyHWId, l.Expires
+                    FROM Login AS l
+                    LEFT JOIN LoginHwid AS h ON h.UserId = l.UserId
+                    """)
                 .Select(l => new LoginInfo
                 {
                     UserId = l.id,
                     Username = l.name,
-                    Token = new LoginToken(l.token, l.expires)
+                    Token = new LoginToken(l.token, l.expires),
+                    ModernHWId = l.modernhwid ?? "",
+                    LegacyHWId = l.legacyhwid ?? ""
                 }));
 
         // Favorites
@@ -445,7 +452,7 @@ public sealed class DataManager : ReactiveObject
         });
     }
 
-    private void ChangeLogin(ChangeReason reason, LoginInfo login)
+    public void ChangeLogin(ChangeReason reason, LoginInfo login)
     {
         // Make immutable copy to avoid race condition bugs.
         var data = new
@@ -453,20 +460,37 @@ public sealed class DataManager : ReactiveObject
             login.UserId,
             UserName = login.Username,
             login.Token.Token,
-            Expires = login.Token.ExpireTime
+            Expires = login.Token.ExpireTime,
+            login.ModernHWId,
+            login.LegacyHWId
         };
         AddDbCommand(con =>
         {
-            con.Execute(reason switch
-                {
-                    ChangeReason.Add => "INSERT INTO Login VALUES (@UserId, @UserName, @Token, @Expires)",
-                    ChangeReason.Update =>
+            switch (reason)
+            {
+                case ChangeReason.Add:
+                    con.Execute(
+                        "INSERT INTO Login (UserId, UserName, Token, Expires) VALUES (@UserId, @UserName, @Token, @Expires)",
+                        data);
+                    con.Execute(
+                        "INSERT OR REPLACE INTO LoginHwid (UserId, ModernHWId, LegacyHWId) VALUES (@UserId, @ModernHWId, @LegacyHWId)",
+                        data);
+                    break;
+                case ChangeReason.Update:
+                    con.Execute(
                         "UPDATE Login SET UserName = @UserName, Token = @Token, Expires = @Expires WHERE UserId = @UserId",
-                    ChangeReason.Remove => "DELETE FROM Login WHERE UserId = @UserId",
-                    _ => throw new ArgumentOutOfRangeException(nameof(reason), reason, null)
-                },
-                data
-            );
+                        data);
+                    con.Execute(
+                        "INSERT OR REPLACE INTO LoginHwid (UserId, ModernHWId, LegacyHWId) VALUES (@UserId, @ModernHWId, @LegacyHWId)",
+                        data);
+                    break;
+                case ChangeReason.Remove:
+                    con.Execute("DELETE FROM LoginHwid WHERE UserId = @UserId", data);
+                    con.Execute("DELETE FROM Login WHERE UserId = @UserId", data);
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(reason), reason, null);
+            }
         });
     }
 
@@ -642,6 +666,39 @@ public sealed class DataManager : ReactiveObject
         public int Count => _parent._hubs.Count;
         public bool IsReadOnly => false;
     }
+
+    /// <summary>
+    /// Makes sure every stored login has a unique modern and legacy HWID bound to it.
+    /// </summary>
+    public void EnsureHwids()
+    {
+        bool anyChanged = false;
+        foreach (var login in _logins.Items)
+        {
+            bool userChanged = false;
+            if (string.IsNullOrEmpty(login.ModernHWId))
+            {
+                login.ModernHWId = BomBom.Game.Patches.HWID.GenerateRandom();
+                userChanged = true;
+            }
+            if (string.IsNullOrEmpty(login.LegacyHWId))
+            {
+                login.LegacyHWId = BomBom.Game.Patches.HWID.GenerateRandom();
+                userChanged = true;
+            }
+
+            if (userChanged)
+            {
+                ChangeLogin(ChangeReason.Update, login);
+                Log.Information("Auto-assigned unique HWIDs to {User}", login.Username);
+                anyChanged = true;
+            }
+        }
+        if (anyChanged)
+        {
+            CommitConfig();
+        }
+    }
 }
 
 public record FavoritesChanged;
@@ -649,3 +706,5 @@ public record FavoritesChanged;
 // Helix-Start
 public record ServerListDisplaySettingsChanged;
 // Helix-End
+
+public sealed record LauncherInstallRequested(SS14.Launcher.Models.LauncherSelfUpdateInfo UpdateInfo);

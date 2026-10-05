@@ -6,6 +6,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Reactive.Linq;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Platform.Storage;
 using BomBom;
@@ -14,6 +15,7 @@ using BomBom.Game.Managers;
 using BomBom.Stealthsey;
 using DynamicData;
 using HarmonyLib;
+using Microsoft.Toolkit.Mvvm.Messaging;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
 using Serilog;
@@ -37,12 +39,26 @@ public sealed class MainWindowViewModel : ViewModelBase, IErrorOverlayOwner
     private readonly LoginManager _loginMgr;
     private readonly HttpClient _http;
     private readonly LauncherInfoManager _infoManager;
+    private readonly LauncherSelfUpdateService _selfUpdater;
     private readonly LocalizationManager _loc;
 
     private int _selectedIndex;
 
     public DataManager Cfg => _cfg;
     [Reactive] public bool OutOfDate { get; private set; }
+    [Reactive] public bool LauncherUpdateAvailable { get; private set; }
+    [Reactive] public bool LauncherUpdateInProgress { get; private set; }
+    [Reactive] public string LauncherUpdateVersionText { get; private set; } = "";
+    [Reactive] public string LauncherUpdateVersionLine { get; private set; } = "";
+    [Reactive] public string LauncherUpdateChannelText { get; private set; } = "";
+    [Reactive] public string LauncherUpdateChannelBadgeBackground { get; private set; } = "#2A5FA8";
+    [Reactive] public string LauncherUpdateChannelBadgeForeground { get; private set; } = "#FFFFFF";
+    [Reactive] public string LauncherUpdateNotes { get; private set; } = "";
+    [Reactive] public bool LauncherUpdateInstallSupported { get; private set; } = true;
+    [Reactive] public string? LauncherUpdateError { get; private set; }
+    [Reactive] public double LauncherUpdateProgress { get; private set; }
+    [Reactive] public string LauncherUpdateProgressText { get; private set; } = "";
+    private LauncherSelfUpdateInfo? _pendingLauncherUpdate;
 
     public HomePageViewModel HomeTab { get; }
     public ServerListTabViewModel ServersTab { get; }
@@ -58,6 +74,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IErrorOverlayOwner
         _loginMgr = Locator.Current.GetRequiredService<LoginManager>();
         _http = Locator.Current.GetRequiredService<HttpClient>();
         _infoManager = Locator.Current.GetRequiredService<LauncherInfoManager>();
+        _selfUpdater = Locator.Current.GetRequiredService<LauncherSelfUpdateService>();
         _loc = LocalizationManager.Instance;
 
         HarmonyManager.Init(new Harmony(BomBomVars.Identifier));
@@ -94,6 +111,11 @@ public sealed class MainWindowViewModel : ViewModelBase, IErrorOverlayOwner
 
         _cfg.Logins.Connect()
             .Subscribe(_ => { this.RaisePropertyChanged(nameof(AccountDropDownVisible)); });
+
+        WeakReferenceMessenger.Default.Register<LauncherInstallRequested>(this, async (_, msg) =>
+        {
+            await InstallSpecificLauncherUpdate(msg.UpdateInfo);
+        });
 
         // If we leave the login view model (by an account getting selected)
         // we reset it to login state
@@ -161,6 +183,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IErrorOverlayOwner
     {
         BusyTask = _loc.GetString("main-window-busy-checking-update");
         await CheckLauncherUpdate();
+        await CheckLauncherSelfUpdate();
         BusyTask = _loc.GetString("main-window-busy-checking-login-status");
         await CheckAccounts();
         BusyTask = null;
@@ -218,6 +241,205 @@ public sealed class MainWindowViewModel : ViewModelBase, IErrorOverlayOwner
 
         OutOfDate = Array.IndexOf(_infoManager.Model.AllowedVersions, ConfigConstants.CurrentLauncherVersion) == -1;
         Log.Debug("Launcher out of date? {Value}", OutOfDate);
+    }
+
+    private async Task CheckLauncherSelfUpdate()
+    {
+        var repo = _cfg.GetCVar(CVars.LauncherUpdateRepo);
+        var auto = _cfg.GetCVar(CVars.LauncherAutoUpdate);
+        var notify = _cfg.GetCVar(CVars.LauncherUpdateNotify);
+        var allowPreRelease = _cfg.GetCVar(CVars.LauncherUpdateAllowPreRelease);
+        if (!auto && !notify)
+            return;
+
+        try
+        {
+            using var updateCts = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+            var update = await _selfUpdater.CheckAsync(repo, allowPreRelease, updateCts.Token);
+            if (update == null)
+                return;
+
+            _pendingLauncherUpdate = update;
+            LauncherUpdateVersionText = update.VersionText;
+            LauncherUpdateVersionLine = _loc.GetString("launcher-update-overlay-version", ("version", update.VersionText));
+            LauncherUpdateChannelText = update.ReleaseTag;
+            LauncherUpdateChannelBadgeBackground = update.IsPreRelease ? "#8A6C2E" : "#2A5FA8";
+            LauncherUpdateChannelBadgeForeground = "#FFFFFF";
+            LauncherUpdateNotes = update.ReleaseNotes;
+            LauncherUpdateInstallSupported = update.InstallSupported;
+            LauncherUpdateAvailable = true;
+            LauncherUpdateError = update.InstallSupported
+                ? null
+                : _loc.GetString("launcher-update-error-macos-manual");
+
+            if (auto && update.InstallSupported)
+            {
+                await InstallLauncherUpdate();
+            }
+        }
+        catch (Exception e)
+        {
+            Log.Warning(e, "Failed to check launcher self-update.");
+        }
+    }
+
+    public void SkipLauncherUpdatePressed()
+    {
+        LauncherUpdateAvailable = false;
+        _pendingLauncherUpdate = null;
+        LauncherUpdateVersionLine = "";
+        LauncherUpdateChannelText = "";
+        LauncherUpdateNotes = "";
+    }
+
+    public async void InstallLauncherUpdatePressed()
+    {
+        await InstallLauncherUpdate();
+    }
+
+    public void OpenLauncherUpdatePagePressed()
+    {
+        if (_pendingLauncherUpdate == null || string.IsNullOrWhiteSpace(_pendingLauncherUpdate.DownloadUrl))
+            return;
+
+        try
+        {
+            Helpers.OpenUri(new Uri(_pendingLauncherUpdate.DownloadUrl));
+        }
+        catch
+        {
+        }
+    }
+
+    private async Task InstallLauncherUpdate()
+    {
+        if (_pendingLauncherUpdate == null || LauncherUpdateInProgress)
+            return;
+
+        if (!_pendingLauncherUpdate.InstallSupported)
+        {
+            LauncherUpdateError = _loc.GetString("launcher-update-error-unsupported-platform");
+            LauncherUpdateAvailable = true;
+            return;
+        }
+
+        try
+        {
+            LauncherUpdateInProgress = true;
+            LauncherUpdateError = null;
+            LauncherUpdateProgress = 0;
+            LauncherUpdateProgressText = _loc.GetString("launcher-update-progress-preparing");
+
+            var targetFile = Path.Combine(Path.GetTempPath(), $"BomBomUpdate_{Guid.NewGuid():N}.zip");
+            using var request = new HttpRequestMessage(HttpMethod.Get, _pendingLauncherUpdate.DownloadUrl);
+            request.Headers.UserAgent.ParseAdd($"{LauncherVersion.Name}/{LauncherVersion.Version}");
+            using var response = await _http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
+            response.EnsureSuccessStatusCode();
+
+            var total = response.Content.Headers.ContentLength ?? 0;
+            await using var src = await response.Content.ReadAsStreamAsync();
+            await using var dst = File.Create(targetFile);
+
+            var buffer = new byte[81920];
+            long readTotal = 0;
+            var sw = Stopwatch.StartNew();
+            while (true)
+            {
+                var read = await src.ReadAsync(buffer);
+                if (read == 0)
+                    break;
+
+                await dst.WriteAsync(buffer.AsMemory(0, read));
+                readTotal += read;
+                if (total > 0)
+                    LauncherUpdateProgress = Math.Clamp((double)readTotal / total, 0, 1);
+
+                var speed = readTotal / Math.Max(sw.Elapsed.TotalSeconds, 0.01);
+                LauncherUpdateProgressText = $"{Helpers.FormatBytes(readTotal)} / {(total > 0 ? Helpers.FormatBytes(total) : "?")} ({Helpers.FormatBytes((long)speed)}/s)";
+            }
+
+            var updaterPath = GetUpdaterExecutablePath();
+            if (string.IsNullOrWhiteSpace(updaterPath) || !File.Exists(updaterPath))
+            {
+                throw new FileNotFoundException($"Updater executable was not found: {updaterPath}", updaterPath);
+            }
+
+            var launcherExe = Process.GetCurrentProcess().MainModule?.FileName ?? "";
+            var launcherDir = Path.GetDirectoryName(launcherExe) ?? "";
+            var launcherName = Path.GetFileName(launcherExe);
+            if (string.IsNullOrWhiteSpace(launcherDir) || string.IsNullOrWhiteSpace(launcherName))
+                throw new InvalidOperationException("Unable to resolve launcher executable path.");
+
+            var psi = new ProcessStartInfo
+            {
+                FileName = updaterPath,
+                UseShellExecute = false
+            };
+            psi.ArgumentList.Add("--zip");
+            psi.ArgumentList.Add(targetFile);
+            psi.ArgumentList.Add("--target");
+            psi.ArgumentList.Add(launcherDir);
+            psi.ArgumentList.Add("--wait-pid");
+            psi.ArgumentList.Add(Process.GetCurrentProcess().Id.ToString());
+            psi.ArgumentList.Add("--launcher");
+            psi.ArgumentList.Add(launcherName);
+
+            Process.Start(psi);
+            ExitPressed();
+        }
+        catch (Exception e)
+        {
+            Log.Error(e, "Self-update installation failed.");
+            LauncherUpdateError = e.Message;
+            LauncherUpdateAvailable = true;
+        }
+        finally
+        {
+            LauncherUpdateInProgress = false;
+        }
+    }
+
+    private async Task InstallSpecificLauncherUpdate(LauncherSelfUpdateInfo update)
+    {
+        _pendingLauncherUpdate = update;
+        LauncherUpdateVersionText = update.VersionText;
+        LauncherUpdateVersionLine = _loc.GetString("launcher-update-overlay-version", ("version", update.VersionText));
+        LauncherUpdateChannelText = update.ReleaseTag;
+        LauncherUpdateChannelBadgeBackground = update.IsPreRelease ? "#8A6C2E" : "#2A5FA8";
+        LauncherUpdateChannelBadgeForeground = "#FFFFFF";
+        LauncherUpdateNotes = update.ReleaseNotes;
+        LauncherUpdateInstallSupported = update.InstallSupported;
+        LauncherUpdateError = update.InstallSupported
+            ? null
+            : _loc.GetString("launcher-update-error-unsupported-platform");
+        LauncherUpdateAvailable = true;
+
+        await InstallLauncherUpdate();
+    }
+
+    private static string GetUpdaterExecutablePath()
+    {
+#if FULL_RELEASE
+        var dir = LauncherPaths.DirLauncherInstall;
+        if (OperatingSystem.IsWindows())
+            return Path.Combine(dir, "SS14.Updater.exe");
+        return Path.Combine(dir, "SS14.Updater");
+#else
+
+#if RELEASE
+        const string buildConfiguration = "Release";
+#else
+        const string buildConfiguration = "Debug";
+#endif
+        var basePath = Path.GetFullPath(Path.Combine(
+            LauncherPaths.DirLauncherInstall,
+            "..", "..", "..", "..",
+            "SS14.Updater", "bin", buildConfiguration, "net10.0"));
+
+        if (OperatingSystem.IsWindows())
+            return Path.Combine(basePath, "SS14.Updater.exe");
+        return Path.Combine(basePath, "SS14.Updater");
+#endif
     }
 
     public void ExitPressed()

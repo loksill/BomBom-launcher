@@ -20,9 +20,7 @@ public static class HideseyAttributeManager
     public static void Initialize()
     {
         Assembly assembly = Assembly.GetExecutingAssembly();
-        IEnumerable<Type> types = assembly.GetTypes();
-
-        IEnumerable<Type> bombomTypes = Assembly.GetExecutingAssembly().ExportedTypes;
+        IEnumerable<Type> bombomTypes = SafeGetExportedTypes(assembly);
 
         foreach (Type type in bombomTypes)
         {
@@ -67,5 +65,17 @@ public static class HideseyAttributeManager
         MethodInfo? prefix = AccessTools.Method(typeof(HideseyPatches), nameof(HideseyPatches.SkipPatchless));
 
         Manual.Patch(method, prefix, HarmonyPatchType.Prefix);
+    }
+
+    private static IEnumerable<Type> SafeGetExportedTypes(Assembly assembly)
+    {
+        try
+        {
+            return assembly.ExportedTypes;
+        }
+        catch (ReflectionTypeLoadException ex)
+        {
+            return ex.Types.Where(t => t != null)!;
+        }
     }
 }

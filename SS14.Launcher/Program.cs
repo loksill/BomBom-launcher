@@ -238,6 +238,7 @@ internal static class Program
         locator.RegisterConstant(new ContentManager());
         locator.RegisterConstant<IEngineManager>(engineManager);
         locator.RegisterConstant(new Updater());
+        locator.RegisterConstant(new LauncherSelfUpdateService(cfg));
         locator.RegisterConstant(authApi);
         locator.RegisterConstant(hubApi);
         locator.RegisterConstant(new ServerListCache());

@@ -4,22 +4,28 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
+using System.Net;
+using System.Net.Http;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Data.Converters;
 using Avalonia.Media;
+using DynamicData;
 using Microsoft.Toolkit.Mvvm.Input;
 using Microsoft.Toolkit.Mvvm.Messaging;
 using ReactiveUI;
+using Serilog;
 using Splat;
 using BomBom.Config;
 using BomBom.Game.Patches;
 using BomBom.Stealthsey;
 using SS14.Launcher.BomBomverse;
 using SS14.Launcher.Localization;
+using SS14.Launcher.Models;
 using SS14.Launcher.Models.ContentManagement;
 using SS14.Launcher.Models.Data;
 using SS14.Launcher.Models.EngineManager;
@@ -36,6 +42,15 @@ namespace SS14.Launcher.ViewModels.MainWindowTabs;
 public partial class OptionsTabViewModel : MainWindowTabViewModel
 {
     public sealed record ThemeFontOption(string Name, string Descriptor);
+    public sealed record LauncherVersionFilterOption(LauncherVersionFilter Value, string Text);
+
+    public enum LauncherVersionFilter
+    {
+        All,
+        ReleaseOnly,
+        PreReleaseOnly
+    }
+
     private const string DefaultBackground = "#25252A";
     private const string DefaultAccent = "#3E6C45";
     private const string DefaultForeground = "#EEEEEE";
@@ -47,10 +62,15 @@ public partial class OptionsTabViewModel : MainWindowTabViewModel
     private readonly KeybindConfigManager _keybindConfigManager;
     private readonly ResourcePackManager _resourcePackManager;
     private readonly LoginManager _loginManager;
+    private readonly LauncherSelfUpdateService _selfUpdateService;
+    private readonly SemaphoreSlim _launcherVersionsSemaphore = new(1, 1);
 
     public ICommand SetHWIdCommand { get; }
     public ICommand GenHWIdCommand { get; }
     public ICommand SetRPCUsernameCommand { get; }
+    public ICommand RefreshLauncherVersionsCommand { get; }
+    public ICommand InstallSelectedLauncherVersionCommand { get; }
+    public ICommand OpenSelectedLauncherVersionCommand { get; }
     public IEnumerable<HideLevel> HideLevels { get; } = Enum.GetValues<HideLevel>();
 
     public LanguageSelectorViewModel Language { get; } = new();
@@ -64,6 +84,9 @@ public partial class OptionsTabViewModel : MainWindowTabViewModel
     };
     public ObservableCollection<ResourcePackInfo> ResourcePacks { get; } = new();
     public ObservableCollection<KeybindConfigInfo> KeybindConfigs { get; } = new();
+    public ObservableCollection<LauncherReleaseEntry> LauncherAvailableVersions { get; } = new();
+    public IReadOnlyList<LauncherVersionFilterOption> LauncherVersionFilters { get; }
+    private readonly List<LauncherReleaseEntry> _launcherAvailableVersionsAll = new();
     public bool HasResourcePacks => ResourcePacks.Count > 0;
     public bool HasKeybindConfigs => KeybindConfigs.Count > 0;
     public string ResourcePacksDirectory => _resourcePackManager.PacksDirectory;
@@ -85,10 +108,22 @@ public partial class OptionsTabViewModel : MainWindowTabViewModel
         _resourcePackManager = Locator.Current.GetRequiredService<ResourcePackManager>();
         _keybindConfigManager = Locator.Current.GetRequiredService<KeybindConfigManager>();
         _loginManager = Locator.Current.GetRequiredService<LoginManager>();
+        _selfUpdateService = Locator.Current.GetRequiredService<LauncherSelfUpdateService>();
+
+        LauncherVersionFilters = new List<LauncherVersionFilterOption>
+        {
+            new LauncherVersionFilterOption(LauncherVersionFilter.All, L("launcher-updates-filter-all")),
+            new LauncherVersionFilterOption(LauncherVersionFilter.ReleaseOnly, L("launcher-updates-filter-release-only")),
+            new LauncherVersionFilterOption(LauncherVersionFilter.PreReleaseOnly, L("launcher-updates-filter-prerelease-only"))
+        };
+        _selectedLauncherVersionFilter = LauncherVersionFilters[0];
 
         SetHWIdCommand = new RelayCommand(OnSetHWIdClick);
         GenHWIdCommand = new RelayCommand(OnGenHWIdClick);
         SetRPCUsernameCommand = new RelayCommand(OnSetRPCUsernameClick);
+        RefreshLauncherVersionsCommand = new RelayCommand(async () => await RefreshLauncherVersionsAsync());
+        InstallSelectedLauncherVersionCommand = new RelayCommand(InstallSelectedLauncherVersion);
+        OpenSelectedLauncherVersionCommand = new RelayCommand(OpenSelectedLauncherVersion);
 
         Persist.UpdateLauncherConfig();
         SetTempHwid();
@@ -530,6 +565,16 @@ public partial class OptionsTabViewModel : MainWindowTabViewModel
         }
     }
 
+    public bool AutoDeleteHWID
+    {
+        get => Cfg.GetCVar(CVars.AutoDeleteHWID);
+        set
+        {
+            Cfg.SetCVar(CVars.AutoDeleteHWID, value);
+            Cfg.CommitConfig();
+        }
+    }
+
     public bool HWID2OptOut
     {
         get => Cfg.GetCVar(CVars.DisallowHwid);
@@ -580,13 +625,66 @@ public partial class OptionsTabViewModel : MainWindowTabViewModel
 
     private void SetTempHwid()
     {
+        PrepareHwidForLaunch();
+
         if (!LIHWIDBind)
         {
             _hwidString = Cfg.GetCVar(CVars.ForcedHWId);
             return;
         }
 
-        _hwidString = _loginManager.ActiveAccount != null ? _loginManager.ActiveAccount.LoginInfo.HWID : "";
+        _hwidString = _loginManager.ActiveAccount != null ? _loginManager.ActiveAccount.LoginInfo.ModernHWId : "";
+    }
+
+    /// <summary>
+    /// Makes sure the active account has unique HWIDs bound to it and pushes them (or the
+    /// manually forced ones) into the HWID patcher before launch.
+    /// </summary>
+    public void PrepareHwidForLaunch()
+    {
+        var account = _loginManager.ActiveAccount;
+        if (account == null) return;
+
+        bool changed = false;
+
+        if (string.IsNullOrEmpty(account.LoginInfo.ModernHWId))
+        {
+            account.LoginInfo.ModernHWId = HWID.GenerateRandom();
+            changed = true;
+        }
+        if (string.IsNullOrEmpty(account.LoginInfo.LegacyHWId))
+        {
+            string newHwid = HWID.GenerateRandom();
+            account.LoginInfo.LegacyHWId = newHwid;
+            Cfg.ChangeLogin(ChangeReason.Update, account.LoginInfo);
+            Cfg.CommitConfig();
+
+            Log.Information("Bound new Legacy HWID to account {User}: {Hwid}", account.Username, newHwid);
+        }
+
+        if (changed)
+        {
+            Cfg.ChangeLogin(ChangeReason.Update, account.LoginInfo);
+            Cfg.CommitConfig();
+            Log.Information("Generated new unique HWIDs for account {User}", account.Username);
+        }
+
+        if (LIHWIDBind)
+        {
+            HWID.SetAll(
+                account.LoginInfo.ModernHWId,
+                account.LoginInfo.LegacyHWId,
+                account.LoginInfo.UserId.ToString()
+            );
+        }
+        else
+        {
+            HWID.SetAll(
+                Cfg.GetCVar(CVars.ForcedHWId),
+                Cfg.GetCVar(CVars.ForcedHWId),
+                account.LoginInfo.UserId.ToString()
+            );
+        }
     }
 
     private void OnSetHWIdClick()
@@ -643,6 +741,234 @@ public partial class OptionsTabViewModel : MainWindowTabViewModel
     public void OpenAccountSettings()
     {
         Helpers.OpenUri(ConfigConstants.AccountManagementUrl);
+    }
+
+    private static string L(string key) => LocalizationManager.Instance.GetString(key);
+
+    public bool LauncherAutoUpdate
+    {
+        get => Cfg.GetCVar(CVars.LauncherAutoUpdate);
+        set
+        {
+            Cfg.SetCVar(CVars.LauncherAutoUpdate, value);
+            Cfg.CommitConfig();
+        }
+    }
+
+    public bool LauncherUpdateNotify
+    {
+        get => Cfg.GetCVar(CVars.LauncherUpdateNotify);
+        set
+        {
+            Cfg.SetCVar(CVars.LauncherUpdateNotify, value);
+            Cfg.CommitConfig();
+        }
+    }
+
+    public bool LauncherUpdateAllowPreRelease
+    {
+        get => Cfg.GetCVar(CVars.LauncherUpdateAllowPreRelease);
+        set
+        {
+            Cfg.SetCVar(CVars.LauncherUpdateAllowPreRelease, value);
+            Cfg.CommitConfig();
+        }
+    }
+
+    public string LauncherUpdateRepo
+    {
+        get => Cfg.GetCVar(CVars.LauncherUpdateRepo);
+        set
+        {
+            Cfg.SetCVar(CVars.LauncherUpdateRepo, value?.Trim() ?? "");
+            Cfg.CommitConfig();
+            this.RaisePropertyChanged(nameof(LauncherUpdateRepo));
+        }
+    }
+
+    private LauncherReleaseEntry? _selectedLauncherVersion;
+    public LauncherReleaseEntry? SelectedLauncherVersion
+    {
+        get => _selectedLauncherVersion;
+        set
+        {
+            _selectedLauncherVersion = value;
+            this.RaisePropertyChanged(nameof(SelectedLauncherVersion));
+            this.RaisePropertyChanged(nameof(CanInstallSelectedLauncherVersion));
+            this.RaisePropertyChanged(nameof(CanOpenSelectedLauncherVersion));
+        }
+    }
+
+    private bool _launcherVersionsLoading;
+    public bool LauncherVersionsLoading
+    {
+        get => _launcherVersionsLoading;
+        private set
+        {
+            _launcherVersionsLoading = value;
+            this.RaisePropertyChanged(nameof(LauncherVersionsLoading));
+        }
+    }
+
+    private string _launcherVersionsStatus = "";
+    public string LauncherVersionsStatus
+    {
+        get => _launcherVersionsStatus;
+        private set
+        {
+            _launcherVersionsStatus = value;
+            this.RaisePropertyChanged(nameof(LauncherVersionsStatus));
+        }
+    }
+
+    public bool CanInstallSelectedLauncherVersion => SelectedLauncherVersion?.UpdateInfo.InstallSupported == true;
+    public bool CanOpenSelectedLauncherVersion => SelectedLauncherVersion?.UpdateInfo is not null;
+
+    private LauncherVersionFilterOption _selectedLauncherVersionFilter;
+    public LauncherVersionFilterOption SelectedLauncherVersionFilter
+    {
+        get => _selectedLauncherVersionFilter;
+        set
+        {
+            if (Equals(_selectedLauncherVersionFilter, value))
+                return;
+
+            _selectedLauncherVersionFilter = value;
+            this.RaisePropertyChanged(nameof(SelectedLauncherVersionFilter));
+            ApplyLauncherVersionFilter();
+        }
+    }
+
+    public override void Selected()
+    {
+        _ = RefreshLauncherVersionsAsync();
+    }
+
+    private async Task RefreshLauncherVersionsAsync()
+    {
+        if (!await _launcherVersionsSemaphore.WaitAsync(0))
+            return;
+
+        try
+        {
+            LauncherVersionsLoading = true;
+            LauncherVersionsStatus = L("launcher-updates-list-loading");
+
+            var repo = LauncherUpdateRepo;
+            var releases = await _selfUpdateService.GetAvailableAsync(repo, CancellationToken.None);
+
+            _launcherAvailableVersionsAll.Clear();
+            foreach (var rel in releases)
+            {
+                _launcherAvailableVersionsAll.Add(new LauncherReleaseEntry(
+                    rel,
+                    rel.IsPreRelease
+                        ? L("launcher-updates-list-channel-prerelease")
+                        : L("launcher-updates-list-channel-release")));
+            }
+
+            ApplyLauncherVersionFilter();
+        }
+        catch (HttpRequestException e) when (e.StatusCode is HttpStatusCode.Forbidden or HttpStatusCode.TooManyRequests)
+        {
+            Log.Warning("Failed to refresh launcher version list: GitHub rate limit exceeded.");
+            LauncherVersionsStatus = L("launcher-updates-rate-limit");
+        }
+        catch (Exception e)
+        {
+            Log.Warning(e, "Failed to refresh launcher version list.");
+            LauncherVersionsStatus = e.Message;
+        }
+        finally
+        {
+            LauncherVersionsLoading = false;
+            _launcherVersionsSemaphore.Release();
+        }
+    }
+
+    private void InstallSelectedLauncherVersion()
+    {
+        if (SelectedLauncherVersion?.UpdateInfo == null)
+            return;
+
+        WeakReferenceMessenger.Default.Send(new LauncherInstallRequested(SelectedLauncherVersion.UpdateInfo));
+    }
+
+    private void OpenSelectedLauncherVersion()
+    {
+        if (SelectedLauncherVersion?.UpdateInfo == null)
+            return;
+
+        try
+        {
+            Helpers.OpenUri(new Uri(SelectedLauncherVersion.UpdateInfo.ReleasePageUrl));
+        }
+        catch
+        {
+        }
+    }
+
+    private void ApplyLauncherVersionFilter()
+    {
+        var previousDownloadUrl = SelectedLauncherVersion?.UpdateInfo.DownloadUrl;
+        IEnumerable<LauncherReleaseEntry> filtered = _launcherAvailableVersionsAll;
+
+        filtered = SelectedLauncherVersionFilter.Value switch
+        {
+            LauncherVersionFilter.ReleaseOnly => filtered.Where(v => !v.IsPreRelease),
+            LauncherVersionFilter.PreReleaseOnly => filtered.Where(v => v.IsPreRelease),
+            _ => filtered
+        };
+
+        LauncherAvailableVersions.Clear();
+        foreach (var version in filtered)
+        {
+            LauncherAvailableVersions.Add(version);
+        }
+
+        SelectedLauncherVersion = LauncherAvailableVersions.FirstOrDefault(v => v.UpdateInfo.DownloadUrl == previousDownloadUrl)
+                                  ?? LauncherAvailableVersions.FirstOrDefault();
+
+        LauncherVersionsStatus = LauncherAvailableVersions.Count == 0
+            ? L("launcher-updates-list-empty")
+            : LocalizationManager.Instance.GetString("launcher-updates-list-count", ("count", LauncherAvailableVersions.Count));
+    }
+
+    public sealed class LauncherReleaseEntry
+    {
+        public LauncherSelfUpdateInfo UpdateInfo { get; }
+        public string ChannelText { get; }
+        public bool IsPreRelease => UpdateInfo.IsPreRelease;
+        public IBrush ChannelBadgeBackground => IsPreRelease
+            ? new SolidColorBrush(Color.Parse("#D08B20"))
+            : new SolidColorBrush(Color.Parse("#2F8F4E"));
+        public IBrush ChannelBadgeForeground => IsPreRelease
+            ? new SolidColorBrush(Color.Parse("#1F1F1F"))
+            : new SolidColorBrush(Color.Parse("#F0F6F0"));
+
+        public LauncherReleaseEntry(LauncherSelfUpdateInfo updateInfo, string channelText)
+        {
+            UpdateInfo = updateInfo;
+            ChannelText = channelText;
+        }
+
+        public string Title => UpdateInfo.VersionText;
+        public string Subtitle => $"{UpdateInfo.ReleaseTag} | {UpdateInfo.PublishedAt:yyyy-MM-dd}";
+        public string Tooltip => string.IsNullOrWhiteSpace(UpdateInfo.ReleaseNotes) ? "-" : UpdateInfo.ReleaseNotes;
+        public string NotesPreview
+        {
+            get
+            {
+                if (string.IsNullOrWhiteSpace(UpdateInfo.ReleaseNotes))
+                    return "-";
+
+                var firstLine = UpdateInfo.ReleaseNotes
+                    .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                    .FirstOrDefault() ?? "-";
+
+                return firstLine.Length > 96 ? firstLine[..96] + "..." : firstLine;
+            }
+        }
     }
 
     // Helix-Start

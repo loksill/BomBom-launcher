@@ -12,6 +12,39 @@
     <vm:MainWindowViewModel />
   </Design.DataContext>
 
+  <UserControl.Styles>
+    <Style Selector="Border.launcher-update-card">
+      <Setter Property="Background" Value="{DynamicResource ThemePopupBackgroundColor}" />
+      <Setter Property="BorderBrush" Value="#607A91A8" />
+      <Setter Property="BorderThickness" Value="1.5" />
+      <Setter Property="CornerRadius" Value="16" />
+      <Setter Property="Padding" Value="16" />
+      <Setter Property="MinWidth" Value="620" />
+      <Setter Property="MaxWidth" Value="860" />
+    </Style>
+
+    <Style Selector="Border.launcher-update-hero">
+      <Setter Property="Background" Value="#2A3E6C45" />
+      <Setter Property="BorderBrush" Value="#7A8E94B8" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="12" />
+      <Setter Property="Padding" Value="12,10" />
+    </Style>
+
+    <Style Selector="Border.launcher-update-section">
+      <Setter Property="Background" Value="#20000000" />
+      <Setter Property="BorderBrush" Value="#406B6F8F" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="10" />
+      <Setter Property="Padding" Value="12" />
+    </Style>
+
+    <Style Selector="Border.launcher-update-channel">
+      <Setter Property="Padding" Value="10,3" />
+      <Setter Property="CornerRadius" Value="10" />
+    </Style>
+  </UserControl.Styles>
+
   <Panel Background="{DynamicResource ThemeBackgroundBrush}">
     <DockPanel LastChildFill="true">
       <!-- Header -->
@@ -104,6 +137,72 @@
         </Viewbox>
         <TextBlock Text="{Binding BusyTask}" HorizontalAlignment="Center" />
       </StackPanel>
+    </ContentControl>
+
+    <ContentControl Classes="OverlayBox"
+                    IsVisible="{Binding LauncherUpdateAvailable}">
+      <Border Classes="launcher-update-card">
+        <StackPanel Orientation="Vertical" Spacing="10">
+          <Border Classes="launcher-update-hero">
+            <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="*,Auto">
+              <TextBlock Grid.Row="0"
+                         Grid.Column="0"
+                         Classes="NanoHeadingMedium"
+                         FontWeight="SemiBold"
+                         Margin="0,0,8,4"
+                         Text="{loc:Loc launcher-update-overlay-title}" />
+              <Border Grid.Row="0"
+                      Grid.Column="1"
+                      Classes="launcher-update-channel"
+                      Background="{Binding LauncherUpdateChannelBadgeBackground}"
+                      Margin="0,0,0,4"
+                      IsVisible="{Binding LauncherUpdateChannelText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                <TextBlock Text="{Binding LauncherUpdateChannelText}"
+                           FontSize="10"
+                           FontWeight="SemiBold"
+                           Foreground="{Binding LauncherUpdateChannelBadgeForeground}" />
+              </Border>
+              <TextBlock Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Text="{Binding LauncherUpdateVersionLine}" Opacity="0.85" />
+            </Grid>
+          </Border>
+
+          <Border Classes="launcher-update-section"
+                  IsVisible="{Binding LauncherUpdateNotes, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+            <StackPanel Spacing="6">
+              <TextBlock Text="{loc:Loc launcher-update-overlay-notes}" FontWeight="SemiBold" />
+              <ScrollViewer MaxHeight="280" HorizontalScrollBarVisibility="Disabled">
+                <TextBlock Text="{Binding LauncherUpdateNotes}" TextWrapping="Wrap" />
+              </ScrollViewer>
+            </StackPanel>
+          </Border>
+
+          <Border Classes="launcher-update-section"
+                  IsVisible="{Binding LauncherUpdateError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+            <TextBlock Text="{Binding LauncherUpdateError}" TextWrapping="Wrap" Foreground="#FF8A8A" />
+          </Border>
+
+          <Border Classes="launcher-update-section" IsVisible="{Binding LauncherUpdateInProgress}">
+            <StackPanel Spacing="6">
+              <ProgressBar Minimum="0" Maximum="1" Value="{Binding LauncherUpdateProgress}" />
+              <TextBlock Text="{Binding LauncherUpdateProgressText}" Opacity="0.85" />
+            </StackPanel>
+          </Border>
+
+          <DockPanel LastChildFill="False" IsVisible="{Binding !LauncherUpdateInProgress}">
+            <Button DockPanel.Dock="Left"
+                    Content="{loc:Loc launcher-update-overlay-skip}"
+                    Command="{Binding SkipLauncherUpdatePressed}" />
+            <Button DockPanel.Dock="Right"
+                    IsVisible="{Binding LauncherUpdateInstallSupported}"
+                    Content="{loc:Loc launcher-update-overlay-install}"
+                    Command="{Binding InstallLauncherUpdatePressed}" />
+            <Button DockPanel.Dock="Right"
+                    IsVisible="{Binding !LauncherUpdateInstallSupported}"
+                    Content="{loc:Loc launcher-update-overlay-open-release}"
+                    Command="{Binding OpenLauncherUpdatePagePressed}" />
+          </DockPanel>
+        </StackPanel>
+      </Border>
     </ContentControl>
 
     <ContentControl Classes="OverlayBox" IsVisible="{Binding OutOfDate}">

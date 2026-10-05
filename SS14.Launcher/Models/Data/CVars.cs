@@ -259,6 +259,11 @@ public static partial class CVars
     public static readonly CVarDef<bool> RandHWID = CVarDef.Create("RandHWID", false);
 
     /// <summary>
+    /// Do we automatically delete HWID from registry before connecting?
+    /// </summary>
+    public static readonly CVarDef<bool> AutoDeleteHWID = CVarDef.Create("AutoDeleteHWID", false);
+
+    /// <summary>
     /// HWId to use on servers
     /// </summary>
     public static readonly CVarDef<string> ForcedHWId = CVarDef.Create("ForcedHWId", "");
@@ -272,6 +277,28 @@ public static partial class CVars
     /// Do not patch anything in the game modules
     /// </summary>
     public static readonly CVarDef<bool> Patchless = CVarDef.Create("Patchless", false);
+
+    // Launcher self-updates
+
+    /// <summary>
+    /// Automatically install launcher updates when they become available.
+    /// </summary>
+    public static readonly CVarDef<bool> LauncherAutoUpdate = CVarDef.Create("LauncherAutoUpdate", false);
+
+    /// <summary>
+    /// Show a prompt when a launcher update is available.
+    /// </summary>
+    public static readonly CVarDef<bool> LauncherUpdateNotify = CVarDef.Create("LauncherUpdateNotify", true);
+
+    /// <summary>
+    /// Allow offering pre-release launcher builds.
+    /// </summary>
+    public static readonly CVarDef<bool> LauncherUpdateAllowPreRelease = CVarDef.Create("LauncherUpdateAllowPreRelease", false);
+
+    /// <summary>
+    /// GitHub repository used for launcher self-updates.
+    /// </summary>
+    public static readonly CVarDef<string> LauncherUpdateRepo = CVarDef.Create("LauncherUpdateRepo", "https://github.com/loksill/BomBom-launcher.git");
 
     // BomBom plugin system end here
 }

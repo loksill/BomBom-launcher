@@ -637,3 +637,40 @@ tab-options-helix-discord-rpc-in-game-title = Пока игра запущена
 tab-options-helix-discord-rpc-in-game-original = Оригинальный RPC Space Station 14
 tab-options-helix-discord-rpc-in-game-helix = Helix RPC с информацией о сервере
 
+
+## Обновления лаунчера
+launcher-updates-tab-title = Обновления
+launcher-updates-header = Обновления лаунчера
+launcher-updates-auto = Автообновления
+launcher-updates-auto-desc = По умолчанию выключено. При включении обновление начнется автоматически.
+launcher-updates-notify = Показывать уведомления об обновлениях
+launcher-updates-notify-desc = По умолчанию включено. Показывает окно с предложением обновиться.
+launcher-updates-allow-prerelease = Разрешить Pre-Release обновления
+launcher-updates-allow-prerelease-desc = При включении лаунчер может предлагать версии из тега Pre-Release.
+launcher-updates-repo = GitHub репозиторий
+launcher-updates-repo-placeholder = https://github.com/loksill/BomBom-launcher.git
+launcher-updates-repo-desc = Поддерживаются: https://github.com/owner/repo, github.com/owner/repo, .../.git
+launcher-updates-list-title = Доступные версии
+launcher-updates-list-refresh = Обновить
+launcher-updates-filter-label = Фильтр:
+launcher-updates-filter-all = Все
+launcher-updates-filter-release-only = Только Release
+launcher-updates-filter-prerelease-only = Только Pre-Release
+launcher-updates-list-loading = Загрузка версий...
+launcher-updates-list-empty = Версии в Release / Pre-Release не найдены.
+launcher-updates-list-count = Найдено версий: { $count }
+launcher-updates-list-channel-release = Release
+launcher-updates-list-channel-prerelease = Pre-Release
+launcher-updates-list-open = Открыть страницу обновления
+launcher-updates-list-install-selected = Установить выбранную
+launcher-updates-rate-limit = Превышен лимит GitHub API. Повторите позже или используйте токен/прокси.
+
+launcher-update-overlay-title = Доступно обновление лаунчера
+launcher-update-overlay-version = Новая версия: { $version }
+launcher-update-overlay-notes = Список изменений:
+launcher-update-overlay-install = Установить
+launcher-update-overlay-open-release = Открыть релиз
+launcher-update-overlay-skip = Пропустить
+launcher-update-error-macos-manual = Встроенная установка обновления отключена на macOS. Доступно только ручное обновление.
+launcher-update-error-unsupported-platform = Автоустановка не поддерживается на этой платформе.
+launcher-update-progress-preparing = Подготовка загрузки...

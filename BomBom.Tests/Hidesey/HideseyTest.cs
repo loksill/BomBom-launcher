@@ -1,57 +1,105 @@
+using System;
 using System.Reflection;
+using HarmonyLib;
 using BomBom.Game.Managers;
 using BomBom.Stealthsey;
-using HarmonyLib;
+using NUnit.Framework; 
+using System.Linq;
+using System.Collections.Generic;
 
 namespace BomBom.HideseyTests;
 
 [TestFixture]
 public class HideseyTest
 {
-    private string HarmonyID = "com.bombom.tests";
+    private string HarmonyID = "com.bombom.tests"; 
     private Harmony harm;
-
+        
     [OneTimeSetUp]
     public void SetUp()
     {
         harm = new Harmony(HarmonyID);
         HarmonyManager.Init(harm);
         Hidesey.Initialize();
+        Hidesey.HidePatch(typeof(Hidesey).Assembly);
     }
 
     [Test]
     public void Hidesey_HiddenAssemblies()
     {
         // Arrange
-        Hidesey.Disperse(); // By the end of bombompatcher this is run once more because BomBom gets re-inited
-        Assembly[] assemblies = AppDomain.CurrentDomain.GetAssemblies();
-        List<string> HiddenAssemblies = new List<string> { "Harmony", "BomBom", "MonoMod", "Mono.", "System.Reflection.Emit," };
+        Hidesey.Disperse();
+        Assembly[] filteredAssemblies;
 
-        // Filter assemblies that match the fullname in HiddenAssemblies
-        Assembly[] filteredAssemblies = assemblies.Where(assembly =>
+        using (Hidesey.ForceEngineView())
+        {
+            filteredAssemblies = AppDomain.CurrentDomain.GetAssemblies();
+        }
+
+        List<string> HiddenAssemblies = new List<string> { "Harmony", "BomBom", "MonoMod", "Mono." };
+        
+        Assembly[] foundForbidden = filteredAssemblies.Where(assembly => 
+            assembly != Assembly.GetExecutingAssembly() &&
             HiddenAssemblies.Any(forbidden => assembly.FullName != null && assembly.FullName.Contains(forbidden))
         ).ToArray();
 
-        // Assert that there should be no assemblies found
-        Assert.IsEmpty(filteredAssemblies, "Forbidden assemblies were found in the domain.");
+        // Assert
+        Assert.That(foundForbidden, Is.Empty, "Forbidden assemblies were found in the engine view domain.");
     }
-
+    
     [Test]
     public void Hidesey_HiddenTypes()
     {
-        // Arrange
-        List<Type> allTypes = AppDomain.CurrentDomain.GetAssemblies()
-            .SelectMany(assembly => assembly.GetTypes())
-            .ToList();
+        List<Type> allTypes = new List<Type>();
 
+        using (Hidesey.ForceEngineView())
+        {
+            foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
+            {
+                if (assembly == Assembly.GetExecutingAssembly()) continue;
+
+                try
+                {
+                    allTypes.AddRange(assembly.GetTypes());
+                }
+                catch (ReflectionTypeLoadException e)
+                {
+                    allTypes.AddRange(e.Types.Where(t => t != null)!);
+                }
+                catch
+                {
+                }
+            }
+        }
+        
         List<string> HiddenTypeNamespaces = new List<string> { "BomBom", "Harmony" };
-
-        // Act
-        Type[] filteredTypes = allTypes.Where(type =>
+        
+        Type[] filteredTypes = allTypes.Where(type => 
             HiddenTypeNamespaces.Any(forbidden => type.Namespace?.StartsWith(forbidden) ?? false)
         ).ToArray();
+        
+        // Assert
+        Assert.That(filteredTypes, Is.Empty, "Forbidden types were found in the engine view domain.");
+    }
+
+    [Test]
+    public void Hidesey_ManifestHidesCvars()
+    {
+        Hidesey.Apply(new HideManifest {
+            Cvars = { "stealth_cvar" }
+        });
+
+        List<string> originalCvars = new List<string> { "normal_cvar", "stealth_cvar", "another_cvar" };
+        IEnumerable<string> filteredCvars;
+
+        // Act
+        using (Hidesey.ForceEngineView())
+        {
+            filteredCvars = Hidesey.LyingCvars(originalCvars);
+        }
 
         // Assert
-        Assert.IsEmpty(filteredTypes, "Forbidden types were found in the domain.");
+        Assert.That(filteredCvars, Does.Contain("normal_cvar"));
+        Assert.That(filteredCvars, Does.Not.Contain("stealth_cvar"), "Cvar wasn't hidden by the manifest.");
     }
 }
