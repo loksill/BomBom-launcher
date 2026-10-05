@@ -647,7 +647,9 @@ public partial class Connector : ReactiveObject
             return null;
         }
 
-        await BomBomify();
+        // Must not be awaited: PrepareMods only finishes once the client connects to the
+        // pipes, and the client is only started further down -> deadlock on StartingClient.
+        BomBomify();
 
         var startInfo = await GetLoaderStartInfo();
 
@@ -830,19 +832,33 @@ public partial class Connector : ReactiveObject
     }
 
     // BomBom-Start
-    private async Task BomBomify()
+    private CancellationTokenSource? _bomBomPipeCancel;
+
+    private void BomBomify()
     {
         Log.Debug("Preparing patch assemblies.");
-        await FileHandler.PrepareMods();
 
-        ConfigureBomBom();
+        // Drop pipes left listening by a previous launch attempt, otherwise reopening
+        // the same pipe names fails and the client gets no patches/config.
+        _bomBomPipeCancel?.Cancel();
+        var pipeCancel = _bomBomPipeCancel = new CancellationTokenSource();
+
+        // The pipe servers open synchronously before the first await inside PrepareMods,
+        // so they are already listening when we start the client below. Completion happens
+        // later, once the client connects, hence no await here.
+        _ = FileHandler.PrepareMods(cancellationToken: pipeCancel.Token)
+            .ContinueWith(
+                t => Log.Warning(t.Exception, "BomBom patch pipe preparation failed"),
+                TaskContinuationOptions.OnlyOnFaulted);
+
+        ConfigureBomBom(pipeCancel.Token);
         BomBomCleanup();
     }
 
     // TODO: Make this a json or something like holy shit
     private string? _forkid;
     private string? _engine;
-    private void ConfigureBomBom()
+    private void ConfigureBomBom(CancellationToken pipeCancel)
     {
         // Prepare environment variables
         Dictionary<string, string?> envVars = new Dictionary<string, string?>
@@ -870,13 +886,31 @@ public partial class Connector : ReactiveObject
         // Serialize environment variables
         string serializedEnvVars = string.Join(";", envVars.Select(kv => $"{kv.Key}={kv.Value}"));
 
-        SendConfig(serializedEnvVars);
+        SendConfig(serializedEnvVars, pipeCancel);
     }
 
-    private async void SendConfig(string config)
+    private void SendConfig(string config, CancellationToken pipeCancel)
     {
-        Server bomBomConfPipeServer = new Server();
-        await bomBomConfPipeServer.ReadySend("BomBomConf", config);
+        // Fire and forget: the pipe only completes once the client reads the config.
+        // Not async void, so a failure cannot tear down the launcher.
+        _ = SendConfigAsync(config, pipeCancel);
+
+        static async Task SendConfigAsync(string payload, CancellationToken cancel)
+        {
+            try
+            {
+                Server bomBomConfPipeServer = new Server();
+                await bomBomConfPipeServer.ReadySend("BomBomConf", payload, cancel);
+            }
+            catch (OperationCanceledException)
+            {
+                Log.Debug("BomBomConf pipe cancelled before the client connected");
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, "Failed to send BomBom config to the client");
+            }
+        }
     }
 
     private string BomBomGetHWID()

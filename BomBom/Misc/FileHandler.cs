@@ -15,7 +15,7 @@ public abstract class FileHandler
     /// <summary>
     /// Prepare data about enabled mods to send to the loader
     /// </summary>
-    public static async Task PrepareMods(string[]? path = null)
+    public static async Task PrepareMods(string[]? path = null, CancellationToken cancellationToken = default)
     {
         path ??= new[] { BomBomVars.BomBomFolder };
         string[] patchPath = new[] { BomBomVars.BomBomPatchFolder };
@@ -33,7 +33,7 @@ public abstract class FileHandler
 
         // Send preloading BomBomPatches through named pipe
         string preloadData = string.Join(",", preloadpaths);
-        Task preloadTask = server.ReadySend("PreloadBomBomPatchesPipe", preloadData);
+        Task preloadTask = server.ReadySend("PreloadBomBomPatchesPipe", preloadData, cancellationToken);
 
         // If we actually do have any - remove them from the patch list
         if (preloadpaths.Count != 0)
@@ -44,12 +44,12 @@ public abstract class FileHandler
         // Prepare remaining BomBomPatches
         List<string> bomBomAsmpaths = bomBomPatches.Where(p => p.Enabled).Select(p => p.Asmpath).ToList();
         string bomBomData = string.Join(",", bomBomAsmpaths);
-        Task bomBomTask = server.ReadySend("BomBomPatchesPipe", bomBomData);
+        Task bomBomTask = server.ReadySend("BomBomPatchesPipe", bomBomData, cancellationToken);
 
         // Prepare SubverterPatches
         List<string> subverterAsmpaths = subverterPatches.Where(p => p.Enabled).Select(p => p.Asmpath).ToList();
         string subverterData = string.Join(",", subverterAsmpaths);
-        Task subverterTask = server.ReadySend("SubverterPatchesPipe", subverterData);
+        Task subverterTask = server.ReadySend("SubverterPatchesPipe", subverterData, cancellationToken);
 
         // Wait for all tasks to complete
         await Task.WhenAll(preloadTask, bomBomTask, subverterTask);
