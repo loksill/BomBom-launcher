@@ -207,9 +207,9 @@ public sealed class MainWindowViewModel : ViewModelBase, IErrorOverlayOwner
         Helpers.OpenUri(new Uri(ConfigConstants.DiscordUrl));
     }
 
-    public void OnHelixDiscordButtonPressed()
+    public void OnBomBomDiscordButtonPressed()
     {
-        Helpers.OpenUri(new Uri(HelixDiscordRichPresence.DiscordUrl));
+        Helpers.OpenUri(new Uri(ConfigConstants.BomBomDiscordUrl));
     }
 
     public void OnGitHubButtonPressed()

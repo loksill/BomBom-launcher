@@ -60,12 +60,12 @@
           <!--<v:Logo DockPanel.Dock="Left" Height="60" HorizontalAlignment="Left" Margin="0, 8"></v:Logo>-->
           <Grid DockPanel.Dock="Right" HorizontalAlignment="Right" VerticalAlignment="Center"
                 ColumnDefinitions="Auto, Auto, Auto" RowDefinitions="Auto, Auto" Margin="0, 0, 3, 0">
-            <!-- Helix Discord link -->
+            <!-- BomBom Discord link -->
             <Button Grid.Row="0" Grid.Column="0" MinWidth="112"
-                    Command="{Binding OnHelixDiscordButtonPressed}" Classes="OpenRight"
+                    Command="{Binding OnBomBomDiscordButtonPressed}" Classes="OpenRight"
                     Margin="0, 6, 2, 2">
               <v:IconLabel Icon="{DynamicResource InfoIcon-discord}"
-                           Content="{loc:Loc main-window-header-link-helix-discord}" />
+                           Content="{loc:Loc main-window-header-link-bombom-discord}" />
             </Button>
 
             <!-- Official Discord link -->

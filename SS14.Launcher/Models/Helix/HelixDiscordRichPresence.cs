@@ -16,7 +16,7 @@ namespace SS14.Launcher.Models.Helix;
 
 public sealed class HelixDiscordRichPresence
 {
-    public const string DiscordUrl = "https://discord.gg/68WfqhBJx3";
+    public const string DiscordUrl = ConfigConstants.BomBomDiscordUrl;
 
     private const string ClientId = "1502326436168597815";
     private const string LargeImageKey = "helix";
@@ -83,12 +83,12 @@ public sealed class HelixDiscordRichPresence
                 ["assets"] = new JsonObject
                 {
                     ["large_image"] = LargeImageKey,
-                    ["large_text"] = "Helix Launcher"
+                    ["large_text"] = "BomBom Launcher"
                 },
                 ["buttons"] = new JsonArray(
                     new JsonObject
                     {
-                        ["label"] = "Helix Discord",
+                        ["label"] = "BomBom Discord",
                         ["url"] = DiscordUrl
                     })
             };
@@ -120,7 +120,7 @@ public sealed class HelixDiscordRichPresence
         }
         catch (Exception e) when (e is IOException or SocketException or ObjectDisposedException or OperationCanceledException)
         {
-            Log.Debug(e, "Helix Discord RPC update failed");
+            Log.Debug(e, "BomBom Discord RPC update failed");
             CloseConnection();
         }
         finally
@@ -155,7 +155,7 @@ public sealed class HelixDiscordRichPresence
         }
         catch (Exception e) when (e is IOException or SocketException or ObjectDisposedException)
         {
-            Log.Debug(e, "Helix Discord RPC clear failed");
+            Log.Debug(e, "BomBom Discord RPC clear failed");
         }
         finally
         {
@@ -191,12 +191,12 @@ public sealed class HelixDiscordRichPresence
                 await SendPayload(DiscordIpcOp.Handshake, handshake, cancel.Token);
                 await ReadFrame(cancel.Token);
 
-                Log.Debug("Helix Discord RPC connected via {Candidate}", candidate.DisplayName);
+                Log.Debug("BomBom Discord RPC connected via {Candidate}", candidate.DisplayName);
                 return true;
             }
             catch (Exception e) when (e is IOException or SocketException or TimeoutException or OperationCanceledException)
             {
-                Log.Verbose(e, "Helix Discord RPC failed to connect via {Candidate}", candidate.DisplayName);
+                Log.Verbose(e, "BomBom Discord RPC failed to connect via {Candidate}", candidate.DisplayName);
                 CloseConnection();
             }
         }

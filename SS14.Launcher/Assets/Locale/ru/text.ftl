@@ -15,7 +15,7 @@ connecting-update-status-unknown = Вы не должны видеть это
 hub-settings-button-remove-tooltip = Убрать хаб
 # Strings for the general main window layout of the launcher
 main-window-header-link-discord = Discord
-main-window-header-link-helix-discord = Helix Discord
+main-window-header-link-bombom-discord = BomBom Discord
 main-window-header-link-official-discord = Официальный Discord
 main-window-header-link-github = GitHub
 # Strings for the drop-down window to manage your active account

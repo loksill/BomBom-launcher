@@ -596,7 +596,7 @@ public partial class Connector : ReactiveObject
         }
         catch (Exception e) when (e is JsonException or HttpRequestException or InvalidDataException)
         {
-            Log.Debug(e, "Failed to fetch server status for Helix Discord RPC");
+            Log.Debug(e, "Failed to fetch server status for BomBom Discord RPC");
             return null;
         }
     }

@@ -77,7 +77,7 @@ public sealed class RecentServerManager
         }
         catch (Exception e)
         {
-            Log.Warning(e, "Failed to load helix recent servers");
+            Log.Warning(e, "Failed to load recent servers");
         }
     }
 
@@ -90,7 +90,7 @@ public sealed class RecentServerManager
         }
         catch (Exception e)
         {
-            Log.Warning(e, "Failed to save helix recent servers");
+            Log.Warning(e, "Failed to save recent servers");
         }
     }
 }

@@ -2,7 +2,7 @@
 
 [Русская версия](ReadmeRU.md)
 
-discord: 
+discord: https://discord.gg/kdedAWD5cF
 
 **BomBom** is a fork of [helix-launcher](https://github.com/banumbas/helix-launcher) with the Marsey functionality attached.
 
@@ -12,7 +12,7 @@ Our goal is to create a launcher with the maximum amount of features and no limi
 
 # License
 
-The Space Station 14 launcher source code inherited from the upstream project remains licensed under the MIT License - see [LICENSE.txt](LICENSE.txt) and GNU Affero General Public License v3.0 (AGPL-3.0-only) - see [LICENSE-AGPL-3.0.txt](LICENSE-AGPL-3.0.txt).
+The Space Station 14 launcher source code inherited from the upstream project remains licensed under the MIT License - see [LICENSE.txt](LICENSE.txt), helixes code licensed under the GNU Affero General Public License v3.0 (AGPL-3.0-only) - see [LICENSE-AGPL-3.0.txt](LICENSE-AGPL-3.0.txt).
 
 All changes created for this fork are licensed under the GNU Affero General Public License v3.0 (AGPL-3.0-only) - see [LICENSE-AGPL-3.0.txt](LICENSE-AGPL-3.0.txt).
 

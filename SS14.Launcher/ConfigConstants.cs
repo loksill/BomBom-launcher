@@ -31,6 +31,7 @@ public static class ConfigConstants
     public static readonly UrlFallbackSet AuthUrl = new(["https://auth.spacestation14.com/", "https://auth.fallback.spacestation14.com/"], StatsHubInfra);
     public static readonly UrlFallbackSet[] DefaultHubUrls = [new(["https://hub.spacestation14.com/", "https://hub.fallback.spacestation14.com/"], StatsHubInfra)];
     public const string DiscordUrl = "https://discord.ss14.io/";
+    public const string BomBomDiscordUrl = "https://discord.gg/kdedAWD5cF";
     public const string GitHubUrl = "https://github.com/banumbas/helix-launcher";
     public const string AccountBaseUrl = "https://account.spacestation14.com/Identity/Account/";
     public const string AccountManagementUrl = $"{AccountBaseUrl}Manage";

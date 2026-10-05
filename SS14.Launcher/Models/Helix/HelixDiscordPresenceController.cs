@@ -114,12 +114,12 @@ public sealed class HelixDiscordPresenceController :
         if (presence == null)
         {
             return new HelixDiscordActivity(
-                Details: "Playing via Helix Launcher",
+                Details: "Playing via BomBom Launcher",
                 State: "Space Station 14");
         }
 
         var server = FirstNonBlank(presence.ServerName, presence.ServerAddress, "Space Station 14");
-        var details = $"Playing via Helix on {server}";
+        var details = $"Playing via BomBom on {server}";
 
         var stateParts = new[]
         {

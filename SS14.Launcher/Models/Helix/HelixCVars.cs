@@ -3,7 +3,7 @@ namespace SS14.Launcher.Models.Data;
 public static partial class CVars
 {
     /// <summary>
-    /// Enable Helix Discord Rich Presence.
+    /// Enable BomBom Discord Rich Presence.
     /// </summary>
     public static readonly CVarDef<bool> HelixDiscordRichPresenceEnabled =
         CVarDef.Create("HelixDiscordRichPresenceEnabled", true);
