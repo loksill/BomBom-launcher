@@ -93,6 +93,7 @@ internal static class Program
 
         VcRedistCheck.Check();
         LauncherPaths.CreateDirs();
+        TryApplyPendingUpdates();
 
         var cfg = new DataManager();
         cfg.Load();
@@ -278,5 +279,41 @@ internal static class Program
         engineManager.ClearAllEngines();
         cfg.SetCVar(CVars.CurrentArchitecture, (int) curArchitecture);
         cfg.CommitConfig();
+    }
+
+    /// <summary>
+    ///     The updater cannot overwrite files that are still mapped as an executable image
+    ///     (its own binary, and on Windows any running file), so it stages those next to their
+    ///     destination as *.pending. Apply them now that nothing of ours is running yet.
+    /// </summary>
+    private static void TryApplyPendingUpdates()
+    {
+        var installDir = LauncherPaths.DirLauncherInstall;
+        if (!Directory.Exists(installDir))
+            return;
+
+        var self = Environment.ProcessPath ?? "";
+
+        foreach (var pending in Directory.GetFiles(installDir, "*.pending"))
+        {
+            var target = pending[..^".pending".Length];
+
+            if (string.Equals(Path.GetFullPath(target), Path.GetFullPath(self), StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            try
+            {
+                if (File.Exists(target))
+                    File.SetAttributes(target, FileAttributes.Normal);
+
+                File.Copy(pending, target, true);
+                File.Delete(pending);
+                Log.Information("Applied pending self-update file {File}.", Path.GetFileName(target));
+            }
+            catch (Exception e)
+            {
+                Log.Warning(e, "Failed to apply pending self-update file {File}.", Path.GetFileName(target));
+            }
+        }
     }
 }

@@ -133,6 +133,19 @@ def publish_linux(x64_only: bool):
     shutil.copyfile("PublishFiles/SS14.Launcher", "bin/publish/Linux/SS14.Launcher")
     shutil.copyfile("PublishFiles/SS14.desktop", "bin/publish/Linux/SS14.desktop")
 
+    # The wrapper and the apphosts must carry the executable bit inside the archive,
+    # otherwise a self-update installs a launcher that cannot be started.
+    for relative in (
+        "SS14.Launcher",
+        "bin_x64/SS14.Launcher",
+        "bin_x64/SS14.Updater",
+        "bin_arm64/SS14.Launcher",
+        "bin_arm64/SS14.Updater",
+    ):
+        path = os.path.join("bin/publish/Linux", relative)
+        if os.path.exists(path):
+            os.chmod(path, 0o755)
+
     os.makedirs("bin/publish/Linux/bin_x64/BomBom/Mods", exist_ok=True)
     if not x64_only:
         os.makedirs("bin/publish/Linux/bin_arm64/BomBom/Mods", exist_ok=True)
