@@ -24,7 +24,6 @@ All changes created for this fork are licensed under the GNU Affero General Publ
 * Redesigned menu with customization options
 * Custom Discord RPC
 * Config system
-* Mods
 
 # Resource Packs
 
