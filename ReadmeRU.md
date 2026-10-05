@@ -26,7 +26,7 @@ discord:
 * Система конфигов
 * Скрытие патчера (подсистема Stealthsey / Hidesey с режимами HideLevel)
 * Инструменты для HWID (современный и legacy HWId, принудительный/случайный HWId, привязка HWId к аккаунту)
-* Самообновление лаунчера из выбираемого репозитория GitHub (по умолчанию https://github.com/loksill/BomBom-launcher.git)
+* Автообновление лаунчера из выбираемого репозитория GitHub (по умолчанию https://github.com/loksill/BomBom-launcher.git)
 
 # Ресурспаки
 

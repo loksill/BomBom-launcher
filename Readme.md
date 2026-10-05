@@ -26,7 +26,7 @@ All changes created for this fork are licensed under the GNU Affero General Publ
 * Config system
 * Patcher stealth (Stealthsey / Hidesey subsystem with HideLevel modes)
 * HWID tools (modern and legacy HWId, forced/random HWId, HWId bound to an account)
-* Launcher self-updates from a selectable GitHub repository (by default https://github.com/loksill/BomBom-launcher.git)
+* Launcher auto-updates from a selectable GitHub repository (by default https://github.com/loksill/BomBom-launcher.git)
 
 # Resource Packs
 
