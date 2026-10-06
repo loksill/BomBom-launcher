@@ -17,6 +17,10 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("platform", nargs="*")
     parser.add_argument("--x64-only", action="store_true")
+    parser.add_argument("--tag", help="Release tag this build is published as, stamped into the launcher so "
+                                      "it knows which release it already is. Defaults to $GITHUB_REF_NAME "
+                                      "when building a tag; otherwise the git tags contained in the build "
+                                      "are used.")
 
     args = parser.parse_args()
     platforms: list[str] = args.platform
@@ -24,6 +28,17 @@ def main():
 
     script_path = os.path.dirname(os.path.realpath(__file__))
     os.chdir(script_path)
+
+    release_tag = args.tag
+    if not release_tag and os.environ.get("GITHUB_REF_TYPE") == "tag":
+        release_tag = os.environ.get("GITHUB_REF_NAME", "")
+
+    if release_tag:
+        # Read by MSBuild/ReleaseTag.targets, which stamps it into the launcher assembly.
+        os.environ["BOMBOM_RELEASE_TAG"] = release_tag
+        print(f"Stamping release tag: {release_tag}")
+    else:
+        print("No release tag given (--tag/GITHUB_REF_NAME), using the git tags contained in the build.")
 
     if "windows" in platforms:
         publish_windows(x64_only)

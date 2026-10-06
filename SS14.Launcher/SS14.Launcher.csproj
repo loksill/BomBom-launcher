@@ -98,4 +98,5 @@
     </Content>
   </ItemGroup>
   <Import Project="..\MSBuild\Robust.Trimming.targets" />
+  <Import Project="..\MSBuild\ReleaseTag.targets" />
 </Project>

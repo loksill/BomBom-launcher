@@ -1,0 +1,49 @@
+<Project>
+
+  <!--
+  The self-update check compares GitHub releases against the build that is actually running, so a
+  build has to know which release it belongs to. This stamps release tags into the assembly as
+  AssemblyMetadata("ReleaseTag", ...) attributes, which LauncherVersion picks up at runtime.
+
+  The tags are resolved in this order of precedence:
+  1. The ReleaseTag MSBuild property (/p:ReleaseTag=...), set by publish.py and CI.
+  2. The BOMBOM_RELEASE_TAG environment variable (MSBuild exposes environment variables as properties).
+  3. Git: every tag whose commit is part of this build. A build made from a checkout a few commits
+     past a release therefore still counts itself as that release, while a build of an older commit
+     only claims the releases it actually contains.
+
+  The launcher runs with the highest version among those tags, so the exact tag set does not have to
+  be unambiguous - several tags on one commit are all stamped.
+
+  Builds outside of a git checkout that are not given a tag get no stamp at all. The self-updater
+  then falls back to the release tag recorded after the last self-install, and finally to the
+  assembly version.
+  -->
+
+  <PropertyGroup>
+    <BomBomReleaseTag Condition="'$(BomBomReleaseTag)' == '' and '$(ReleaseTag)' != ''">$(ReleaseTag)</BomBomReleaseTag>
+    <BomBomReleaseTag Condition="'$(BomBomReleaseTag)' == ''">$(BOMBOM_RELEASE_TAG)</BomBomReleaseTag>
+  </PropertyGroup>
+
+  <Target Name="BomBomStampReleaseTags" BeforeTargets="GetAssemblyAttributes">
+    <ItemGroup Condition="'$(BomBomReleaseTag)' != ''">
+      <AssemblyMetadata Include="ReleaseTag" Value="$(BomBomReleaseTag)" />
+    </ItemGroup>
+
+    <Exec Condition="'$(BomBomReleaseTag)' == ''"
+          Command="git tag --merged HEAD"
+          ConsoleToMSBuild="true"
+          IgnoreExitCode="true"
+          ContinueOnError="WarnAndContinue"
+          StandardOutputImportance="low"
+          StandardErrorImportance="low">
+      <Output TaskParameter="ConsoleOutput" ItemName="_BomBomReleaseTag" />
+    </Exec>
+
+    <!-- Batches over the tags so that every one of them ends up as its own attribute. -->
+    <ItemGroup Condition="'$(BomBomReleaseTag)' == '' and '@(_BomBomReleaseTag)' != ''">
+      <AssemblyMetadata Include="ReleaseTag" Value="%(_BomBomReleaseTag.Identity)" />
+    </ItemGroup>
+  </Target>
+
+</Project>

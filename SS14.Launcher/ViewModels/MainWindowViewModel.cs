@@ -385,6 +385,11 @@ public sealed class MainWindowViewModel : ViewModelBase, IErrorOverlayOwner
             psi.ArgumentList.Add(launcherName);
 
             Process.Start(psi);
+
+            // Remember what we just installed: builds without a release tag stamped into them fall
+            // back to this so that the update prompt does not come back after a restart.
+            _cfg.SetCVar(CVars.LauncherInstalledReleaseTag, _pendingLauncherUpdate.ReleaseTag);
+
             ExitPressed();
         }
         catch (Exception e)

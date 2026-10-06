@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -30,8 +31,11 @@ public sealed record LauncherSelfUpdateInfo(
 
 public sealed class LauncherSelfUpdateService
 {
+    private readonly DataManager _cfg;
+
     public LauncherSelfUpdateService(DataManager cfg)
     {
+        _cfg = cfg;
     }
 
     public async Task<LauncherSelfUpdateInfo?> CheckAsync(string repoInput, bool includePreRelease, CancellationToken cancel = default)
@@ -40,10 +44,54 @@ public sealed class LauncherSelfUpdateService
         if (releases.Count == 0)
             return null;
 
-        var currentVersion = LauncherVersion.Version ?? new Version(0, 0, 0, 0);
+        return SelectUpdate(releases, GetInstalledRelease(), includePreRelease);
+    }
+
+    /// <summary>
+    ///     The release this build counts itself as being: the tags stamped into it at compile time,
+    ///     falling back to the tag recorded when the built-in updater last installed a release.
+    /// </summary>
+    internal InstalledRelease GetInstalledRelease()
+    {
+        IReadOnlyList<string> releaseTags = LauncherVersion.ReleaseTags;
+
+        if (releaseTags.Count == 0)
+        {
+            var recorded = _cfg.GetCVar(CVars.LauncherInstalledReleaseTag);
+            if (!string.IsNullOrWhiteSpace(recorded))
+                releaseTags = new[] { recorded };
+        }
+
+        return ResolveInstalledRelease(releaseTags, LauncherVersion.Version ?? new Version(0, 0, 0, 0));
+    }
+
+    internal static InstalledRelease ResolveInstalledRelease(IEnumerable<string> releaseTags, Version assemblyVersion)
+    {
+        var tags = releaseTags
+            .Where(tag => !string.IsNullOrWhiteSpace(tag))
+            .Select(tag => tag.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var version = assemblyVersion;
+        foreach (var tag in tags)
+        {
+            if (TryParseReleaseVersion(tag, out _, out var parsed) && parsed > version)
+                version = parsed;
+        }
+
+        return new InstalledRelease(version, tags);
+    }
+
+    internal static LauncherSelfUpdateInfo? SelectUpdate(
+        IReadOnlyList<LauncherSelfUpdateInfo> releases,
+        InstalledRelease installed,
+        bool includePreRelease)
+    {
         var filtered = releases
             .Where(r => includePreRelease || !r.IsPreRelease)
-            .Where(r => r.Version > currentVersion)
+            .Where(r => !installed.Matches(r.ReleaseTag))
+            .Where(r => r.Version > installed.Version)
             .OrderByDescending(r => r.Version)
             .ThenBy(r => r.IsPreRelease)
             .ThenByDescending(r => r.PublishedAt)
@@ -51,11 +99,33 @@ public sealed class LauncherSelfUpdateService
 
         if (filtered.Count == 0)
         {
-            Log.Debug("Self-update: current version {CurrentVersion} is up-to-date", currentVersion);
+            Log.Debug(
+                "Self-update: current version {CurrentVersion} (release {ReleaseTags}) is up-to-date",
+                installed.Version,
+                installed.Tags.Count > 0 ? string.Join(", ", installed.Tags) : "unknown");
             return null;
         }
 
         return filtered[0];
+    }
+
+    /// <summary>
+    ///     What a build counts itself as when checking for updates.
+    /// </summary>
+    /// <param name="Version">Version compared against the versions of the releases on GitHub.</param>
+    /// <param name="Tags">Release tags the build belongs to, used to recognise itself in the release list.</param>
+    internal readonly record struct InstalledRelease(Version Version, IReadOnlyList<string> Tags)
+    {
+        public bool Matches(string releaseTag)
+        {
+            foreach (var tag in Tags)
+            {
+                if (string.Equals(tag, releaseTag, StringComparison.OrdinalIgnoreCase))
+                    return true;
+            }
+
+            return false;
+        }
     }
 
     public async Task<IReadOnlyList<LauncherSelfUpdateInfo>> GetAvailableAsync(string repoInput, CancellationToken cancel = default)
@@ -192,38 +262,62 @@ public sealed class LauncherSelfUpdateService
 
     private static bool TryParseVersionFromTagOrTitle(string? tagName, string? releaseName, out string normalizedText, out Version version)
     {
-        static string? ExtractVersionText(string? input)
-        {
-            if (string.IsNullOrWhiteSpace(input))
-                return null;
-
-            var trimmed = input.Trim().TrimStart('v', 'V');
-            if (Version.TryParse(trimmed, out _))
-                return trimmed;
-
-            var m = Regex.Match(input, @"(?<!\d)(\d+\.\d+\.\d+(?:\.\d+)?)(?!\d)");
-            return m.Success ? m.Groups[1].Value : null;
-        }
-
-        var fromTag = ExtractVersionText(tagName ?? "");
-        if (fromTag != null && Version.TryParse(fromTag, out var parsedTagVersion) && parsedTagVersion != null)
-        {
-            version = parsedTagVersion;
-            normalizedText = fromTag;
+        if (TryParseReleaseVersion(tagName, out normalizedText, out version))
             return true;
-        }
 
-        var fromName = ExtractVersionText(releaseName ?? "");
-        if (fromName != null && Version.TryParse(fromName, out var parsedNameVersion) && parsedNameVersion != null)
-        {
-            version = parsedNameVersion;
-            normalizedText = fromName;
-            return true;
-        }
+        return TryParseReleaseVersion(releaseName, out normalizedText, out version);
+    }
 
-        normalizedText = "";
+    /// <summary>
+    ///     Pulls a <see cref="Version"/> out of a release tag or release title.
+    ///     BomBom releases are tagged like <c>26.10.05.(5)-release</c>: the parenthesised build number
+    ///     is part of the release's identity, so it has to survive into the parsed version. Otherwise
+    ///     every release published on the same day compares as equal to the installed one.
+    /// </summary>
+    internal static bool TryParseReleaseVersion(string? input, out string versionText, out Version version)
+    {
+        versionText = "";
         version = new Version(0, 0, 0, 0);
-        return false;
+
+        if (string.IsNullOrWhiteSpace(input))
+            return false;
+
+        var trimmed = input.Trim().TrimStart('v', 'V');
+        if (Version.TryParse(trimmed, out var direct))
+        {
+            versionText = trimmed;
+            version = direct;
+            return true;
+        }
+
+        var match = Regex.Match(trimmed, @"\d+(?:\.\d+|\.\(\d+\)){2,}");
+        if (!match.Success)
+            return false;
+
+        // Remote tags are untrusted input, so a component that does not fit a Version is rejected
+        // instead of throwing.
+        var parts = new List<int>(4);
+        foreach (Match digit in Regex.Matches(match.Value, @"\d+"))
+        {
+            if (parts.Count == 4)
+                break;
+
+            if (!int.TryParse(digit.Value, NumberStyles.None, CultureInfo.InvariantCulture, out var part))
+                return false;
+
+            parts.Add(part);
+        }
+
+        // The pattern above always yields at least three components, anything else is not a version.
+        if (parts.Count < 3)
+            return false;
+
+        versionText = match.Value;
+        version = parts.Count >= 4
+            ? new Version(parts[0], parts[1], parts[2], parts[3])
+            : new Version(parts[0], parts[1], parts[2]);
+
+        return true;
     }
 
     private static string FormatMarkdownToText(string markdown)

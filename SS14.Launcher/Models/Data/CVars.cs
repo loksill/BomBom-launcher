@@ -300,6 +300,13 @@ public static partial class CVars
     /// </summary>
     public static readonly CVarDef<string> LauncherUpdateRepo = CVarDef.Create("LauncherUpdateRepo", "https://github.com/loksill/BomBom-launcher.git");
 
+    /// <summary>
+    /// Release tag of the last version the built-in updater installed.
+    /// Only used as a fallback by builds that have no release tag stamped into them at compile time,
+    /// so that the update prompt cannot come back right after an update was installed.
+    /// </summary>
+    public static readonly CVarDef<string> LauncherInstalledReleaseTag = CVarDef.Create("LauncherInstalledReleaseTag", "");
+
     // BomBom plugin system end here
 }
 
