@@ -10,11 +10,13 @@ using Avalonia;
 using Avalonia.Logging;
 using Avalonia.Media;
 using Avalonia.ReactiveUI;
+using BomBom.Config;
 using Microsoft.Win32;
 using Serilog;
 using Serilog.Sinks.SystemConsole.Themes;
 using Splat;
 using SS14.Launcher.Api;
+using SS14.Launcher.BomBomverse;
 using SS14.Launcher.Localization;
 using SS14.Launcher.Models;
 using SS14.Launcher.Models.ContentManagement;
@@ -92,7 +94,9 @@ internal static class Program
         Log.Logger = logCfg.CreateLogger();
 
         VcRedistCheck.Check();
+        BomBomPaths.Root = LauncherPaths.DirDataRoot;
         LauncherPaths.CreateDirs();
+        ModsMigrator.MigrateFromInstallDirectory();
         TryApplyPendingUpdates();
 
         var cfg = new DataManager();

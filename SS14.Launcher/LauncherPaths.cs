@@ -32,6 +32,14 @@ public static class LauncherPaths
     public static readonly string DirLauncherInstall = GetInstallDir();
     public static readonly string DirUserData = GetUserDataDir();
     public static readonly string DirLocalData = GetLocalUserDataDir();
+
+    /// <summary>
+    ///     Root of everything the launcher keeps outside of its own install directory:
+    ///     ~/.local/share/Space Station 14 on Linux, %APPDATA%\Space Station 14 on Windows,
+    ///     ~/Library/Application Support/Space Station 14 on macOS.
+    /// </summary>
+    public static readonly string DirDataRoot = Path.GetDirectoryName(DirUserData)!;
+
     public static readonly string DirEngineInstallations = Path.Combine(DirUserData, EngineInstallationsDirName);
     public static readonly string DirModuleInstallations = Path.Combine(DirUserData, EngineModulesDirName);
     // Legacy server content directory. No longer used except to delete on launch.
@@ -40,7 +48,7 @@ public static class LauncherPaths
     // Helix-Start
     public static readonly string DirResourcePacks = Path.Combine(DirUserData, ResourcePacksDirName);
     public static readonly string DirResourcePackOverlayCache = Path.Combine(DirLocalData, ResourcePackOverlayCacheDirName);
-    public static readonly string DirClientData = Path.Combine(Path.GetDirectoryName(DirUserData)!, ClientDataDirName);
+    public static readonly string DirClientData = Path.Combine(DirDataRoot, ClientDataDirName);
     public static readonly string DirKeybindConfigs = Path.Combine(DirClientData, KeybindConfigsDirName);
     public static readonly string DirLegacyKeybindConfigs = Path.Combine(DirUserData, KeybindConfigsDirName);
     // Helix-End
@@ -48,9 +56,11 @@ public static class LauncherPaths
     public static readonly string PathClientMacLog = Path.Combine(DirLogs, ClientMacLogName);
     public static readonly string PathClientStdoutLog = Path.Combine(DirLogs, ClientStdoutLogName);
     public static readonly string PathClientStderrLog = Path.Combine(DirLogs, ClientStderrLogName);
-    // BomBom plugin paths
-    public static readonly string DirBomBom = Path.Combine(DirLauncherInstall, BomBomVars.BomBomFolder);
-    public static readonly string DirPatch = Path.Combine(DirLauncherInstall, BomBomVars.BomBomPatchFolder);
+    // BomBom plugin paths. Mods live in user data instead of next to the executable: the
+    // install directory is replaced by updates, is not writable for every install, and is
+    // never the working directory of a packaged build.
+    public static readonly string DirBomBom = Path.Combine(DirDataRoot, BomBomVars.BomBomFolder);
+    public static readonly string DirPatch = Path.Combine(DirDataRoot, BomBomVars.BomBomPatchFolder);
     public static readonly string PathClientStdbombomLog = Path.Combine(DirLogs, BomBomVars.BomBomLoggerFileName);
     public static readonly string PathPublicKey = Path.Combine(DirLauncherInstall, "signing_key");
     public static readonly string PathContentDb = Path.Combine(DirLocalData, "content.db");

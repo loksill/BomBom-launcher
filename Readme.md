@@ -149,12 +149,13 @@ SS14.Launcher_Linux.zip
 ├── SS14.desktop         # Linux desktop entry
 ├── bin_x64/
 │   ├── SS14.Launcher    # launcher executable
-│   ├── loader/          # SS14.Loader (game loader)
-│   └── BomBom/Mods/     # empty folder for mods
+│   └── loader/          # SS14.Loader (game loader)
 └── dotnet_x64/          # downloaded .NET Runtime
 ```
 
 Without `--x64-only`, `bin_arm64/` and `dotnet_arm64/` are added next to them. The Windows package also contains `Space Station 14 Launcher.exe` (bootstrap) and `console.bat` at the root, and the macOS package contains `Space Station 14 Launcher.app`.
+
+Mods are not part of the package: the launcher reads them from `<user data>/BomBom/Mods`, which is `~/.local/share/Space Station 14/BomBom/Mods` on Linux, `%APPDATA%\Space Station 14\BomBom\Mods` on Windows and `~/Library/Application Support/Space Station 14/BomBom/Mods` on macOS (the *Open mods directory* button in the plugins tab opens it). Mods that older builds kept next to the executable are moved there on the first start.
 
 Running a built package:
 * Windows: unpack the archive and run `Space Station 14 Launcher.exe`.

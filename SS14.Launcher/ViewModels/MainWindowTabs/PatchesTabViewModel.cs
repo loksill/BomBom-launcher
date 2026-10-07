@@ -29,7 +29,7 @@ public class PatchesTabViewModel : MainWindowTabViewModel
 
     public PatchesTabViewModel()
     {
-        OpenPatchDirectoryCommand = new RelayCommand(() => OpenPatchDirectory(BomBomVars.BomBomFolder));
+        OpenPatchDirectoryCommand = new RelayCommand(OpenPatchDirectory);
         ReloadModsCommand = new RelayCommand(ReloadMods);
         EnableRefreshCommand = new RelayCommand(Refresh);
         ReloadMods();
@@ -61,13 +61,23 @@ public class PatchesTabViewModel : MainWindowTabViewModel
         LoadEnabledPatches(assemblies, SubverterPatches);
     }
 
-    private static void OpenPatchDirectory(string directoryName)
+    private static void OpenPatchDirectory()
     {
-        Process.Start(new ProcessStartInfo
+        string directory = BomBomPaths.BomBomDirectory;
+
+        try
         {
-            UseShellExecute = true,
-            FileName = Path.Combine(Directory.GetCurrentDirectory(), directoryName)
-        });
+            Directory.CreateDirectory(directory);
+            Process.Start(new ProcessStartInfo
+            {
+                UseShellExecute = true,
+                FileName = directory
+            });
+        }
+        catch (Exception e)
+        {
+            Log.Error(e, "Failed to open mod directory {Directory}", directory);
+        }
     }
 
     private static void LoadPatchList<T>(List<T> patches, ICollection<T> patchList, string patchName) where T : IPatch

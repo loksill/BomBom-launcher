@@ -141,7 +141,7 @@ public abstract class FileHandler
     {
         try
         {
-            string[] updatedSubdir = subdir.Prepend(Directory.GetCurrentDirectory()).ToArray();
+            string[] updatedSubdir = subdir.Prepend(BomBomPaths.Root).ToArray();
             string path = Path.Combine(updatedSubdir);
 
             if (Directory.Exists(path))

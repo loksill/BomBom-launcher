@@ -104,10 +104,6 @@ def publish_windows(x64_only: bool):
         shutil.copytree(f"SS14.Loader/bin/Release/{TFM}/win-arm64/publish", "bin/publish/Windows/bin_arm64/loader", dirs_exist_ok=True)
         shutil.copytree(f"SS14.Updater/bin/Release/{TFM}/win-arm64/publish", "bin/publish/Windows/bin_arm64", dirs_exist_ok=True)
 
-    os.makedirs("bin/publish/Windows/bin_x64/BomBom/Mods", exist_ok=True)
-    if not x64_only:
-        os.makedirs("bin/publish/Windows/bin_arm64/BomBom/Mods", exist_ok=True)
-
     shutil.make_archive("SS14.Launcher_Windows", "zip", "bin/publish/Windows")
 
 def publish_linux(x64_only: bool):
@@ -161,10 +157,6 @@ def publish_linux(x64_only: bool):
         if os.path.exists(path):
             os.chmod(path, 0o755)
 
-    os.makedirs("bin/publish/Linux/bin_x64/BomBom/Mods", exist_ok=True)
-    if not x64_only:
-        os.makedirs("bin/publish/Linux/bin_arm64/BomBom/Mods", exist_ok=True)
-
     shutil.make_archive("SS14.Launcher_Linux", "zip", "bin/publish/Linux")
 
 
@@ -190,9 +182,6 @@ def publish_osx():
 
     shutil.copytree("Dependencies/dotnet/mac", f"{res_root}/x86_64/dotnet")
     shutil.copytree("Dependencies/dotnet/mac-arm64", f"{res_root}/arm64/dotnet")
-
-    for arch in ["x86_64", "arm64"]:
-        os.makedirs(f"{res_root}/{arch}/bin/BomBom/Mods", exist_ok=True)
 
     shutil.make_archive("SS14.Launcher_macOS", "zip", "bin/publish/macOS/")
 

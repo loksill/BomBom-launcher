@@ -149,12 +149,13 @@ SS14.Launcher_Linux.zip
 ├── SS14.desktop         # ярлык для рабочего стола Linux
 ├── bin_x64/
 │   ├── SS14.Launcher    # исполняемый файл лаунчера
-│   ├── loader/          # SS14.Loader (загрузчик игры)
-│   └── BomBom/Mods/     # пустая папка под моды
+│   └── loader/          # SS14.Loader (загрузчик игры)
 └── dotnet_x64/          # скачанный .NET Runtime
 ```
 
 Если не передан `--x64-only`, рядом появляются `bin_arm64/` и `dotnet_arm64/`. Для Windows в корень архива кладутся `Space Station 14 Launcher.exe` (bootstrap) и `console.bat`, для macOS — `Space Station 14 Launcher.app`.
+
+Моды не входят в пакет: лаунчер читает их из `<пользовательские данные>/BomBom/Mods` — `~/.local/share/Space Station 14/BomBom/Mods` на Linux, `%APPDATA%\Space Station 14\BomBom\Mods` на Windows и `~/Library/Application Support/Space Station 14/BomBom/Mods` на macOS (кнопка *Open mods directory* во вкладке плагинов открывает именно её). Моды, которые старые сборки держали рядом с исполняемым файлом, при первом запуске переносятся туда.
 
 Запуск собранного пакета:
 * Windows: распаковать архив и запустить `Space Station 14 Launcher.exe`.
